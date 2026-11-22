@@ -593,7 +593,7 @@ fun GroupedNotificationCard(
                                             text = displayTitle,
                                             style = MaterialTheme.typography.bodySmall.copy(
                                                 fontWeight = FontWeight.SemiBold,
-                                                fontSize = 12.sp,
+                                                fontSize = 13.5.sp,
                                             ),
                                             color = MaterialTheme.colorScheme.onSurface,
                                             maxLines = 1,
@@ -603,7 +603,7 @@ fun GroupedNotificationCard(
                                         if (preview.text.isNotBlank()) {
                                             Text(
                                                 text = "— ${preview.text}",
-                                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
@@ -615,7 +615,10 @@ fun GroupedNotificationCard(
                                     Spacer(Modifier.height(2.dp))
                                     Text(
                                         text = displayTitle,
-                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 15.sp,
+                                        ),
                                         color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
@@ -624,7 +627,7 @@ fun GroupedNotificationCard(
                                         Spacer(Modifier.height(2.dp))
                                         Text(
                                             text = preview.text,
-                                            style = MaterialTheme.typography.bodySmall,
+                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp),
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 2,
                                             overflow = TextOverflow.Ellipsis,

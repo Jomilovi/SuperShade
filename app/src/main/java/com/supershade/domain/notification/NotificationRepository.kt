@@ -67,6 +67,8 @@ class NotificationRepository(
     private var currentClassificationMode: ClassificationMode = ClassificationMode.ONE_UI
     private var currentAppOverrides: Map<String, ShadeCategory> = emptyMap()
     private val activeSbns = java.util.concurrent.ConcurrentHashMap<String, StatusBarNotification>()
+    private val pendingUserDismissals = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val pendingDismissedNotifications = java.util.concurrent.ConcurrentHashMap<String, ShadeNotification>()
 
     private val _notifications = MutableStateFlow<List<ShadeNotification>>(emptyList())
     val notifications: StateFlow<List<ShadeNotification>> = _notifications.asStateFlow()
@@ -110,9 +112,8 @@ class NotificationRepository(
     val snoozedRecords: StateFlow<List<SnoozeRecord>> = _snoozedRecords.asStateFlow()
 
     // Set by NotificationCollector when the listener service is connected.
-    var canceller: ((String) -> Unit)? = null
+    var canceller: ((String) -> Boolean)? = null
     var snoozer: ((String, Long) -> Unit)? = null
-    var clearAller: (() -> Unit)? = null
 
     // key → timestamp when snooze expires; in-memory only, reset on service restart
     private val snoozedUntil = mutableMapOf<String, Long>()
@@ -209,8 +210,9 @@ class NotificationRepository(
         com.supershade.service.NotificationCollector.instance?.refreshNotifications()
     }
 
-    fun onNotificationPosted(sbn: StatusBarNotification) {
+    fun onNotificationPosted(sbn: StatusBarNotification, showHeadsUp: Boolean = true) {
         activeSbns[sbn.key] = sbn
+        if (sbn.key in pendingUserDismissals) return
 
         // Apps like Samsung Voice Recorder post an ongoing MediaStyle service notification
         // while also registering a MediaSession. Suppress them from the notification feed;
@@ -248,17 +250,20 @@ class NotificationRepository(
 
         // Only show a heads-up peek card for genuinely new, non-summary, non-ongoing notifications.
         // Updates to existing notifications or ongoing services shouldn't spam toasts.
-        if (isNew && !shade.isGroupSummary && !shade.isOngoing && shade.packageName != "com.supershade") {
+        if (showHeadsUp && isNew && !shade.isGroupSummary && !shade.isOngoing && shade.packageName != "com.supershade") {
             _newNotifications.tryEmit(shade)
         }
     }
 
     fun onNotificationRemoved(key: String) {
+        pendingUserDismissals.remove(key)
         activeSbns.remove(key)
         if (_voiceRecorderNotification.value?.key == key) {
             _voiceRecorderNotification.value = null
         }
         val removed = _notifications.value.find { it.key == key }
+            ?: pendingDismissedNotifications.remove(key)
+        pendingDismissedNotifications.remove(key)
         if (removed != null && removed.packageName != "com.supershade") {
             val record = DismissedNotificationRecord(
                 key = removed.key,
@@ -279,53 +284,67 @@ class NotificationRepository(
     }
 
     fun cancelAndRemove(key: String) {
-        val target = _notifications.value.find { it.key == key }
-        if (target != null) {
-            if (target.isClearable) {
-                _lastDismissed.value = target
-            }
-            val elapsed = System.currentTimeMillis() - target.postTime
-            val isFast = elapsed in 0..4000L
-            adaptiveLoop?.recordInteraction(
-                target.packageName,
-                target.channelId,
-                if (isFast) NotificationInteractionType.FAST_DISMISS else NotificationInteractionType.DISMISS,
-            )
+        val target = _notifications.value.find { it.key == key } ?: return
+        if (!target.isClearable || !pendingUserDismissals.add(key)) return
+        pendingDismissedNotifications[key] = target
+
+        val requestAccepted = canceller?.invoke(key) == true
+        if (!requestAccepted) {
+            pendingUserDismissals.remove(key)
+            pendingDismissedNotifications.remove(key)
+            return
         }
-        canceller?.invoke(key)
-        onNotificationRemoved(key)
+
+        _lastDismissed.value = target
+        val elapsed = System.currentTimeMillis() - target.postTime
+        val isFast = elapsed in 0..4000L
+        adaptiveLoop?.recordInteraction(
+            target.packageName,
+            target.channelId,
+            if (isFast) NotificationInteractionType.FAST_DISMISS else NotificationInteractionType.DISMISS,
+        )
+        _notifications.update { current -> current.filterNot { it.key == key } }
     }
 
     fun cancelAll() {
-        val now = System.currentTimeMillis()
         val pinned = _pinnedKeys.value
         // Pinned and ongoing notifications are immune to Clear all
         val dismissible = _notifications.value.filter { it.isClearable && it.key !in pinned }
-        val newRecords = dismissible.map { note ->
-            DismissedNotificationRecord(
-                key = note.key,
-                packageName = note.packageName,
-                title = note.title,
-                text = note.text,
-                postTime = note.postTime,
-                dismissedTime = now,
-                category = note.category,
-                isClearable = note.isClearable,
-                channelId = note.channelId,
-            )
-        }
-        _dismissedHistory.update { current ->
-            (newRecords + current).distinctBy { it.key }.take(60)
-        }
+        val acceptedKeys = mutableSetOf<String>()
         dismissible.forEach { note ->
-            adaptiveLoop?.recordInteraction(note.packageName, note.channelId, NotificationInteractionType.CLEAR_ALL)
+            if (pendingUserDismissals.add(note.key)) {
+                pendingDismissedNotifications[note.key] = note
+                if (canceller?.invoke(note.key) == true) {
+                    acceptedKeys += note.key
+                    adaptiveLoop?.recordInteraction(note.packageName, note.channelId, NotificationInteractionType.CLEAR_ALL)
+                } else {
+                    pendingUserDismissals.remove(note.key)
+                    pendingDismissedNotifications.remove(note.key)
+                }
+            }
         }
-        if (clearAller != null) {
-            clearAller?.invoke()
-        } else {
-            dismissible.forEach { note -> canceller?.invoke(note.key) }
+        if (acceptedKeys.isNotEmpty()) {
+            _notifications.update { current -> current.filterNot { it.key in acceptedKeys } }
         }
-        _notifications.update { current -> current.filter { !it.isClearable || it.key in pinned } }
+    }
+
+    fun restoreFailedDismissal(sbn: StatusBarNotification) {
+        pendingUserDismissals.remove(sbn.key)
+        pendingDismissedNotifications.remove(sbn.key)
+        if (_lastDismissed.value?.key == sbn.key) _lastDismissed.value = null
+        onNotificationPosted(sbn, showHeadsUp = false)
+    }
+
+    fun releasePendingDismissal(key: String) {
+        pendingUserDismissals.remove(key)
+    }
+
+    fun clearPendingDismissals() {
+        val pendingKeys = pendingUserDismissals.toSet()
+        pendingUserDismissals.clear()
+        pendingDismissedNotifications.clear()
+        val dismissedKey = _lastDismissed.value?.key
+        if (dismissedKey != null && dismissedKey in pendingKeys) _lastDismissed.value = null
     }
 
     fun recordLaunch(note: ShadeNotification) {

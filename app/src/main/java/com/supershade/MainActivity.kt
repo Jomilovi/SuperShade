@@ -1,13 +1,17 @@
 package com.supershade
 
+import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -76,7 +80,7 @@ class MainActivity : ComponentActivity() {
             val isActive by settings.isActive.collectAsState(initial = false)
             val blockSystemShade by settings.blockSystemShade.collectAsState(initial = true)
             val tileShape by settings.tileShape.collectAsState(initial = com.supershade.settings.TileShape.SQUIRCLE)
-            val tileSize by settings.tileSize.collectAsState(initial = com.supershade.settings.TileSize.STANDARD)
+            val tileHeightDp by settings.tileHeightDp.collectAsState(initial = com.supershade.settings.TileSize.STANDARD.heightDp)
             val tileColumns by settings.tileColumns.collectAsState(initial = com.supershade.settings.TileGridColumns.STANDARD)
             val showWideCards by settings.showWideCards.collectAsState(initial = true)
             val splitGestureMode by settings.splitGestureMode.collectAsState(initial = com.supershade.settings.SplitGestureMode.SEPARATE_70_30)
@@ -102,6 +106,13 @@ class MainActivity : ComponentActivity() {
                 var shizukuPermGranted by remember { mutableStateOf(connector.hasPermission()) }
                 var writeSettingsGranted by remember { mutableStateOf(Settings.System.canWrite(this)) }
                 var accessibilityGranted by remember { mutableStateOf(isAccessibilityServiceEnabled()) }
+                var wifiNetworkNamePermissionGranted by remember { mutableStateOf(hasWifiNetworkNamePermission()) }
+                val wifiNetworkNamePermissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission(),
+                ) {
+                    wifiNetworkNamePermissionGranted = hasWifiNetworkNamePermission()
+                    if (wifiNetworkNamePermissionGranted) shadeViewModel.refreshQuickSettingsTiles()
+                }
 
                 DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
@@ -112,6 +123,11 @@ class MainActivity : ComponentActivity() {
                             shizukuPermGranted = connector.hasPermission()
                             writeSettingsGranted = Settings.System.canWrite(this@MainActivity)
                             accessibilityGranted = isAccessibilityServiceEnabled()
+                            val hasWifiNamePermission = hasWifiNetworkNamePermission()
+                            if (hasWifiNamePermission && !wifiNetworkNamePermissionGranted) {
+                                shadeViewModel.refreshQuickSettingsTiles()
+                            }
+                            wifiNetworkNamePermissionGranted = hasWifiNamePermission
                             if (isActive && notifAccessGranted && overlayGranted) {
                                 toggleShadeService(true)
                             }
@@ -160,6 +176,10 @@ class MainActivity : ComponentActivity() {
                         overlayGranted = overlayGranted,
                         writeSettingsGranted = writeSettingsGranted,
                         accessibilityGranted = accessibilityGranted,
+                        wifiNetworkNamePermissionGranted = wifiNetworkNamePermissionGranted,
+                        onRequestWifiNetworkNamePermission = {
+                            wifiNetworkNamePermissionLauncher.launch(wifiNetworkNamePermission())
+                        },
                         shadeActive = isActive,
                         blockSystemShade = blockSystemShade,
                         selectedTheme = theme,
@@ -345,10 +365,16 @@ class MainActivity : ComponentActivity() {
                             superHaptics.sliderTick()
                             scope.launch { settings.setTileShape(shape) }
                         },
-                        tileSize = tileSize,
                         onTileSizeChange = { size ->
                             superHaptics.sliderTick()
-                            scope.launch { settings.setTileSize(size) }
+                            scope.launch {
+                                settings.setTileSize(size)
+                                settings.setTileHeightDp(size.heightDp)
+                            }
+                        },
+                        tileHeightDp = tileHeightDp,
+                        onTileHeightChange = { heightDp ->
+                            scope.launch { settings.setTileHeightDp(heightDp) }
                         },
                         tileColumns = tileColumns,
                         onTileColumnsChange = { cols ->
@@ -429,6 +455,15 @@ class MainActivity : ComponentActivity() {
             runCatching { ComponentName.unflattenFromString(it) == component }.getOrDefault(false)
         }
     }
+
+    private fun wifiNetworkNamePermission(): String = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.NEARBY_WIFI_DEVICES
+    } else {
+        Manifest.permission.ACCESS_FINE_LOCATION
+    }
+
+    private fun hasWifiNetworkNamePermission(): Boolean =
+        checkSelfPermission(wifiNetworkNamePermission()) == PackageManager.PERMISSION_GRANTED
 
     private fun toggleShadeService(enable: Boolean) {
         val intent = Intent(this, ShadeService::class.java)

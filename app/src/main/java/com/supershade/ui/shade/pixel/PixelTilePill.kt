@@ -55,6 +55,11 @@ import com.supershade.ui.theme.M3ExpressiveMotion
 import com.supershade.ui.theme.M3ExpressiveShapes
 import com.supershade.ui.theme.getCardBorder
 import com.supershade.ui.theme.rememberMorphShape
+import com.supershade.settings.TileShape
+import com.supershade.settings.TileSize
+import com.supershade.ui.shade.TileShapeDecoration
+import com.supershade.ui.shade.isOutlineStyle
+import com.supershade.ui.theme.ShadeShapeScheme
 
 /**
  * Android 15/16 Material Expressive (Pixel) Quick Settings Tile Pill.
@@ -67,6 +72,8 @@ import com.supershade.ui.theme.rememberMorphShape
 @Composable
 fun PixelTilePill(
     tile: TileDefinition,
+    tileShape: TileShape = TileShape.SQUIRCLE,
+    tileHeightDp: Int = TileSize.STANDARD.heightDp,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null,
@@ -144,6 +151,7 @@ fun PixelTilePill(
     val pillBgColor by animateColorAsState(
         targetValue = when {
             isEditing -> MaterialTheme.colorScheme.surfaceContainerHigh
+            isActive && tileShape.isOutlineStyle() -> MaterialTheme.colorScheme.surfaceContainerHigh
             isActive -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.surfaceContainerHigh
         },
@@ -154,6 +162,7 @@ fun PixelTilePill(
     val onPillColor by animateColorAsState(
         targetValue = when {
             isEditing -> MaterialTheme.colorScheme.onSurface
+            isActive && tileShape.isOutlineStyle() -> MaterialTheme.colorScheme.primary
             isActive -> MaterialTheme.colorScheme.onPrimary
             else -> MaterialTheme.colorScheme.onSurface
         },
@@ -193,7 +202,20 @@ fun PixelTilePill(
     }
     val isExpandable = tile.id in setOf("internet", "wifi", "bt", "bluetooth", "hotspot", "dnd", "mute", "sound", "volume")
 
-    val pillShape = RoundedCornerShape(outerCornerRadius)
+    val pillShape = if (tileShape == TileShape.SQUIRCLE) {
+        RoundedCornerShape(outerCornerRadius)
+    } else {
+        ShadeShapeScheme.fromTileShape(tileShape).tile
+    }
+    val sizeScale = (tileHeightDp.toFloat() / TileSize.STANDARD.heightDp).coerceIn(0.72f, 1.38f)
+    val tileBorder = when {
+        tileShape.isOutlineStyle() && tileShape != TileShape.CIRCLE_DASH -> androidx.compose.foundation.BorderStroke(
+            if (isActive) 1.7.dp else 1.dp,
+            if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        )
+        tileShape == TileShape.CIRCLE_DASH -> androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        else -> getCardBorder(alpha = if (isActive) 0.12f else 0.30f)
+    }
 
     Box(
         modifier = modifier
@@ -206,10 +228,10 @@ fun PixelTilePill(
         Surface(
             shape = pillShape,
             color = pillBgColor,
-            border = getCardBorder(alpha = if (isActive) 0.12f else 0.30f),
+            border = tileBorder,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(68.dp)
+                .height(tileHeightDp.dp)
                 .clip(pillShape)
                 .combinedClickable(
                     interactionSource = interactionSource,
@@ -234,16 +256,18 @@ fun PixelTilePill(
                     stateDescription = if (isActive) "Active" else "Inactive"
                 },
         ) {
+            Box(Modifier.fillMaxSize()) {
+            TileShapeDecoration(tileShape, isActive)
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp * sizeScale.coerceIn(0.9f, 1.1f), vertical = 10.dp * sizeScale.coerceIn(0.9f, 1.1f)),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Morphing Squircle / Circle Icon Container
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size((46.dp * sizeScale).coerceIn(34.dp, 58.dp))
                         .graphicsLayer {
                             scaleX = iconContainerScale
                             scaleY = iconContainerScale
@@ -258,7 +282,7 @@ fun PixelTilePill(
                         contentDescription = null,
                         tint = iconTint,
                         modifier = Modifier
-                            .size(22.dp)
+                            .size((22.dp * sizeScale).coerceIn(18.dp, 30.dp))
                             .graphicsLayer {
                                 rotationZ = iconRotation
                             },
@@ -269,7 +293,7 @@ fun PixelTilePill(
                         contentDescription = null,
                         colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(iconTint),
                         modifier = Modifier
-                            .size(22.dp)
+                            .size((22.dp * sizeScale).coerceIn(18.dp, 30.dp))
                             .graphicsLayer {
                                 rotationZ = iconRotation
                             },
@@ -280,7 +304,7 @@ fun PixelTilePill(
                         contentDescription = null,
                         tint = iconTint,
                         modifier = Modifier
-                            .size(22.dp)
+                            .size((22.dp * sizeScale).coerceIn(18.dp, 30.dp))
                             .graphicsLayer {
                                 rotationZ = iconRotation
                             },
@@ -299,7 +323,7 @@ fun PixelTilePill(
                         text = displayLabel,
                         style = MaterialTheme.typography.labelLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = (14f * sizeScale).coerceIn(11f, 18f).sp,
                             letterSpacing = 0.15.sp,
                         ),
                         color = onPillColor,
@@ -321,7 +345,7 @@ fun PixelTilePill(
                         Text(
                             text = subtitleText,
                             style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 11.5.sp,
+                                fontSize = (11.5f * sizeScale).coerceIn(9.5f, 15f).sp,
                                 fontWeight = FontWeight.Normal,
                             ),
                             color = onPillColor.copy(alpha = if (isActive) 0.85f else 0.70f),
@@ -343,6 +367,7 @@ fun PixelTilePill(
                     )
                 }
             }
+        }
         }
 
         // Edit mode remove badge

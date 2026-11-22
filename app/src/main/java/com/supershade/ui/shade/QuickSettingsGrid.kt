@@ -116,6 +116,7 @@ fun QuickSettingsGrid(
     isExpanded: Boolean = false,
     tileShape: TileShape = TileShape.SQUIRCLE,
     tileSize: TileSize = TileSize.STANDARD,
+    tileHeightDp: Int = TileSize.STANDARD.heightDp,
     tileColumns: TileGridColumns = TileGridColumns.STANDARD,
     showWideCards: Boolean = true,
     isEditing: Boolean = false,
@@ -256,6 +257,7 @@ fun QuickSettingsGrid(
                             tile = wifiTile,
                             theme = theme,
                             tileShape = tileShape,
+                            tileHeightDp = tileHeightDp,
                             onClick = { onTileClick(wifiTile) },
                             onLongClick = onTileLongClick?.let { cb -> { cb(wifiTile) } },
                             modifier = Modifier.weight(1f),
@@ -264,6 +266,7 @@ fun QuickSettingsGrid(
                             tile = btTile,
                             theme = theme,
                             tileShape = tileShape,
+                            tileHeightDp = tileHeightDp,
                             onClick = { onTileClick(btTile) },
                             onLongClick = onTileLongClick?.let { cb -> { cb(btTile) } },
                             modifier = Modifier.weight(1f),
@@ -280,6 +283,7 @@ fun QuickSettingsGrid(
                                 tile = airplaneTile,
                                 theme = theme,
                                 tileShape = tileShape,
+                                tileHeightDp = tileHeightDp,
                                 onClick = { onTileClick(airplaneTile) },
                                 onLongClick = onTileLongClick?.let { cb -> { cb(airplaneTile) } },
                                 modifier = Modifier.weight(1f),
@@ -288,6 +292,7 @@ fun QuickSettingsGrid(
                                 tile = hotspotTile,
                                 theme = theme,
                                 tileShape = tileShape,
+                                tileHeightDp = tileHeightDp,
                                 onClick = { onTileClick(hotspotTile) },
                                 onLongClick = onTileLongClick?.let { cb -> { cb(hotspotTile) } },
                                 modifier = Modifier.weight(1f),
@@ -303,6 +308,7 @@ fun QuickSettingsGrid(
                                 tile = secondary,
                                 theme = theme,
                                 tileShape = tileShape,
+                                tileHeightDp = tileHeightDp,
                                 onClick = { onTileClick(secondary) },
                                 onLongClick = onTileLongClick?.let { cb -> { cb(secondary) } },
                                 modifier = Modifier.fillMaxWidth(),
@@ -319,6 +325,7 @@ fun QuickSettingsGrid(
                     theme = theme,
                     tileShape = tileShape,
                     tileSize = tileSize,
+                    tileHeightDp = tileHeightDp,
                     colCount = colCount,
                     haptics = haptics,
                     onMoveTile = onMoveTile,
@@ -338,6 +345,7 @@ fun QuickSettingsGrid(
                                     isShizukuConnected = isShizukuConnected,
                                     tileShape = tileShape,
                                     tileSize = tileSize,
+                                    tileHeightDp = tileHeightDp,
                                     columns = colCount,
                                     onClick = { onTileClick(tile) },
                                     onLongClick = onTileLongClick?.let { cb -> { cb(tile) } },
@@ -469,6 +477,7 @@ private fun DraggableTileGrid(
     theme: ShadeTheme,
     tileShape: TileShape,
     tileSize: TileSize,
+    tileHeightDp: Int,
     colCount: Int,
     haptics: SuperHaptics,
     onMoveTile: (Int, Int) -> Unit,
@@ -625,6 +634,7 @@ private fun DraggableTileGrid(
                                 isShizukuConnected = false,
                                 tileShape = tileShape,
                                 tileSize = tileSize,
+                                tileHeightDp = tileHeightDp,
                                 columns = colCount,
                                 onClick = {},
                                 onLongClick = null,
@@ -675,6 +685,7 @@ private fun DraggableTileGrid(
                         isShizukuConnected = false,
                         tileShape = tileShape,
                         tileSize = tileSize,
+                        tileHeightDp = tileHeightDp,
                         columns = colCount,
                         onClick = {},
                         onLongClick = null,
@@ -693,6 +704,7 @@ private fun ConnectivityWideCard(
     tile: TileDefinition,
     theme: ShadeTheme,
     tileShape: TileShape = TileShape.SQUIRCLE,
+    tileHeightDp: Int = TileSize.STANDARD.heightDp,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -727,11 +739,8 @@ private fun ConnectivityWideCard(
 
     val containerColor by animateColorAsState(
         targetValue = when {
-            tile.isActive -> when (theme) {
-                is ShadeTheme.Nothing -> Color.White
-                is ShadeTheme.Cyberpunk -> Color(0xFF00F0FF).copy(alpha = 0.22f)
-                else -> MaterialTheme.colorScheme.primary
-            }
+            tile.isActive && tileShape.isOutlineStyle() -> MaterialTheme.colorScheme.surfaceContainerHigh
+            tile.isActive -> MaterialTheme.colorScheme.primary
             else -> when (theme) {
                 is ShadeTheme.Cyberpunk -> Color(0xFF080D1A)
                 is ShadeTheme.Nothing -> Color(0xFF14171C)
@@ -747,11 +756,8 @@ private fun ConnectivityWideCard(
 
     val contentColor by animateColorAsState(
         targetValue = when {
-            tile.isActive -> when (theme) {
-                is ShadeTheme.Nothing -> Color.Black
-                is ShadeTheme.Cyberpunk -> Color(0xFF00F0FF)
-                else -> MaterialTheme.colorScheme.onPrimary
-            }
+            tile.isActive && tileShape.isOutlineStyle() -> MaterialTheme.colorScheme.primary
+            tile.isActive -> MaterialTheme.colorScheme.onPrimary
             else -> when (theme) {
                 is ShadeTheme.Cyberpunk -> Color(0xFF00F0FF).copy(alpha = 0.90f)
                 else -> MaterialTheme.colorScheme.onSurface
@@ -765,9 +771,14 @@ private fun ConnectivityWideCard(
     )
 
     val borderStroke = when {
+        tileShape.isOutlineStyle() && tileShape != TileShape.CIRCLE_DASH -> BorderStroke(
+            if (tile.isActive) 1.7.dp else 1.dp,
+            if (tile.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        )
+        tileShape == TileShape.CIRCLE_DASH -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         theme is ShadeTheme.Cyberpunk -> BorderStroke(
             1.2.dp,
-            if (tile.isActive) Color(0xFF00F0FF) else Color(0xFF00F0FF).copy(alpha = 0.35f),
+            if (tile.isActive) MaterialTheme.colorScheme.primary else Color(0xFF00F0FF).copy(alpha = 0.35f),
         )
         theme is ShadeTheme.Nothing -> if (tile.isActive) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
         theme is ShadeTheme.Pixel -> null
@@ -783,12 +794,18 @@ private fun ConnectivityWideCard(
         animationSpec = com.supershade.ui.theme.M3ExpressiveMotion.spatialDefault(),
         label = "connCornerRadius",
     )
-    val wideCardShape = when (theme) {
+    val defaultWideCardShape = when (theme) {
         is ShadeTheme.Cyberpunk -> ChamferedCornerShape(8.dp)
         is ShadeTheme.Nothing -> RoundedCornerShape(16.dp)
         is ShadeTheme.Pixel -> RoundedCornerShape(26.dp)
         else -> RoundedCornerShape(dynamicCornerRadius)
     }
+    val wideCardShape = if (tileShape == TileShape.SQUIRCLE) {
+        defaultWideCardShape
+    } else {
+        LocalShadeShapeScheme.current.card
+    }
+    val sizeScale = (tileHeightDp.toFloat() / TileSize.STANDARD.heightDp).coerceIn(0.72f, 1.38f)
 
     val iconRotation by animateFloatAsState(
         targetValue = when {
@@ -808,7 +825,7 @@ private fun ConnectivityWideCard(
         color = containerColor,
         border = borderStroke,
         modifier = modifier
-            .height(66.dp)
+            .height((66f * sizeScale).coerceIn(48f, 94f).dp)
             .graphicsLayer { scaleX = cardScale; scaleY = cardScale },
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -829,10 +846,11 @@ private fun ConnectivityWideCard(
                         )
                 )
             }
+            TileShapeDecoration(tileShape, tile.isActive)
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                    .padding(horizontal = 10.dp * sizeScale.coerceIn(0.9f, 1.1f), vertical = 8.dp * sizeScale.coerceIn(0.9f, 1.1f)),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -840,7 +858,7 @@ private fun ConnectivityWideCard(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(44.dp)
+                        .size((44.dp * sizeScale).coerceIn(32.dp, 56.dp))
                         .graphicsLayer { scaleX = iconScale; scaleY = iconScale }
                         .clip(CircleShape)
                         .background(
@@ -879,7 +897,7 @@ private fun ConnectivityWideCard(
                         contentDescription = null,
                         tint = contentColor,
                         modifier = Modifier
-                            .size(22.dp)
+                            .size((22.dp * sizeScale).coerceIn(18.dp, 30.dp))
                             .graphicsLayer { rotationZ = iconRotation },
                     )
                 }
@@ -944,6 +962,8 @@ private fun ConnectivityWideCard(
                             else -> displayLabel
                         }
                         val formattedConnSub = when {
+                            theme is ShadeTheme.Cyberpunk && (tile.id.contains("wifi") || tile.id.contains("internet")) ->
+                                if (tile.isActive) "NET // ${tile.subtitle ?: "CONNECTED"}" else "NET // OFFLINE"
                             theme is ShadeTheme.Cyberpunk -> if (tile.isActive) "SYS // CONNECTED" else "SYS // STANDBY"
                             theme is ShadeTheme.Nothing -> (tile.subtitle ?: if (tile.isActive) "CONNECTED" else "OFF").uppercase()
                             else -> tile.subtitle ?: if (tile.isActive) "Connected" else "Off"

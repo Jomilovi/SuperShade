@@ -5,7 +5,6 @@ import android.content.Intent
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.net.ConnectivityManager
-import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
 import androidx.lifecycle.ViewModel
@@ -24,7 +23,10 @@ import com.supershade.domain.tile.TileDefinition
 import com.supershade.domain.tile.TileRepository
 import com.supershade.domain.tile.TileToggler
 import com.supershade.domain.tile.canonicalTileId
+import com.supershade.domain.tile.connectedWifiInfo
+import com.supershade.domain.tile.connectedWifiSsid
 import com.supershade.domain.tile.humanizeTileLabel
+import com.supershade.domain.tile.wifiNetworkNameAccessHint
 import com.supershade.settings.ShadeSettings
 import com.supershade.shizuku.StatusBarGovernor
 import kotlinx.coroutines.Job
@@ -196,6 +198,10 @@ class ShadeViewModel(
             .onEach { size -> _state.update { it.copy(tileSize = size) } }
             .launchIn(viewModelScope)
 
+        settings.tileHeightDp
+            .onEach { height -> _state.update { it.copy(tileHeightDp = height) } }
+            .launchIn(viewModelScope)
+
         settings.tileColumns
             .onEach { cols -> _state.update { it.copy(tileColumns = cols) } }
             .launchIn(viewModelScope)
@@ -307,6 +313,10 @@ class ShadeViewModel(
                 activePanel = if (expanded) ShadePanel.QUICK_SETTINGS else ShadePanel.NOTIFICATIONS,
             )
         }
+    }
+
+    fun refreshQuickSettingsTiles() {
+        tileRepo.refreshActiveStates()
     }
 
     fun setActivePanel(panel: ShadePanel) {
@@ -427,13 +437,15 @@ class ShadeViewModel(
                 }
             }
             id.contains("wifi") || id.contains("internet") -> {
-                val wm = context.getSystemService(WifiManager::class.java)
                 val cm = context.getSystemService(ConnectivityManager::class.java)
-                val info = try { wm?.connectionInfo } catch (_: Exception) { null }
-                val rawSsid = info?.ssid?.trim('"')
-                val ssid = if (rawSsid == "<unknown ssid>" || rawSsid.isNullOrBlank()) {
-                    if (tile.isActive) "Connected Wi-Fi" else "Wi-Fi Disconnected"
-                } else rawSsid
+                val info = context.connectedWifiInfo()
+                val ssid = if (tile.isActive) {
+                    context.connectedWifiSsid()
+                        ?: context.wifiNetworkNameAccessHint()
+                        ?: "Connected Wi-Fi"
+                } else {
+                    "Wi-Fi Disconnected"
+                }
 
                 val freq = info?.frequency ?: 0
                 val band = when {

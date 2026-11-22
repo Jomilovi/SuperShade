@@ -123,6 +123,7 @@ import com.supershade.domain.tile.TileDefinition
 import com.supershade.settings.TileShape
 import com.supershade.settings.TileSize
 import com.supershade.ui.theme.ShadeTheme
+import kotlin.math.roundToInt
 
 @Composable
 fun TileCard(
@@ -131,6 +132,7 @@ fun TileCard(
     isShizukuConnected: Boolean,
     tileShape: TileShape = TileShape.SQUIRCLE,
     tileSize: TileSize = TileSize.STANDARD,
+    tileHeightDp: Int = TileSize.STANDARD.heightDp,
     columns: Int = 4,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
@@ -169,8 +171,8 @@ fun TileCard(
     )
 
     val cardShape = when {
-        theme is ShadeTheme.Cyberpunk -> ChamferedCornerShape(if (isPressed) 5.dp else 8.dp)
-        theme is ShadeTheme.Nothing -> RoundedCornerShape(if (isPressed) 12.dp else 16.dp)
+        tileShape == TileShape.SQUIRCLE && theme is ShadeTheme.Cyberpunk -> ChamferedCornerShape(if (isPressed) 5.dp else 8.dp)
+        tileShape == TileShape.SQUIRCLE && theme is ShadeTheme.Nothing -> RoundedCornerShape(if (isPressed) 12.dp else 16.dp)
         baseCorner != null -> RoundedCornerShape(dynamicCornerRadius)
         else -> shapeScheme.tile
     }
@@ -213,11 +215,8 @@ fun TileCard(
 
     val containerColor by animateColorAsState(
         targetValue = when {
-            tile.isActive -> when (theme) {
-                is ShadeTheme.Nothing -> Color.White
-                is ShadeTheme.Cyberpunk -> Color(0xFF00F0FF).copy(alpha = 0.22f)
-                else -> MaterialTheme.colorScheme.primary
-            }
+            tile.isActive && tileShape.isOutlineStyle() -> MaterialTheme.colorScheme.surfaceContainerHigh
+            tile.isActive -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.surfaceContainerHigh
         },
         animationSpec = com.supershade.ui.theme.M3ExpressiveMotion.effectsDefault(),
@@ -225,11 +224,8 @@ fun TileCard(
     )
     val contentColor by animateColorAsState(
         targetValue = when {
-            tile.isActive -> when (theme) {
-                is ShadeTheme.Nothing -> Color.Black
-                is ShadeTheme.Cyberpunk -> Color(0xFF00F0FF)
-                else -> MaterialTheme.colorScheme.onPrimary
-            }
+            tile.isActive && tileShape.isOutlineStyle() -> MaterialTheme.colorScheme.primary
+            tile.isActive -> MaterialTheme.colorScheme.onPrimary
             else -> MaterialTheme.colorScheme.onSurface
         },
         animationSpec = com.supershade.ui.theme.M3ExpressiveMotion.effectsDefault(),
@@ -238,9 +234,14 @@ fun TileCard(
 
     val indication = LocalIndication.current
     val borderStroke = when {
+        tileShape.isOutlineStyle() && tileShape != TileShape.CIRCLE_DASH -> BorderStroke(
+            if (tile.isActive) 1.7.dp else 1.dp,
+            if (tile.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        )
+        tileShape == TileShape.CIRCLE_DASH -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         theme is ShadeTheme.Cyberpunk -> BorderStroke(
             1.2.dp,
-            if (tile.isActive) Color(0xFF00F0FF) else Color(0xFF00F0FF).copy(alpha = 0.35f),
+            if (tile.isActive) MaterialTheme.colorScheme.primary else Color(0xFF00F0FF).copy(alpha = 0.35f),
         )
         theme is ShadeTheme.Nothing && !tile.isActive -> BorderStroke(
             1.dp,
@@ -257,15 +258,17 @@ fun TileCard(
         "Off"
     }
 
-    val cardHeight = tileSize.heightDp.dp
-    val rawIconSize = if (columns >= 5) (tileSize.iconSizeDp - 2).coerceAtLeast(18) else tileSize.iconSizeDp
+    val sizeScale = (tileHeightDp.toFloat() / tileSize.heightDp).coerceIn(0.78f, 1.42f)
+    val cardHeight = tileHeightDp.dp
+    val scaledIconSize = (tileSize.iconSizeDp * sizeScale).roundToInt()
+    val rawIconSize = if (columns >= 5) (scaledIconSize - 2).coerceAtLeast(18) else scaledIconSize
     val iconSize = rawIconSize.dp
     val horizPadding = if (columns >= 5) (shapeScheme.tilePaddingHorizontal - 2.dp).coerceAtLeast(4.dp) else shapeScheme.tilePaddingHorizontal
     val vertPadding = when (tileSize) {
         TileSize.COMPACT    -> (shapeScheme.tilePaddingVertical - 3.dp).coerceAtLeast(4.dp)
         TileSize.COMFORTABLE -> shapeScheme.tilePaddingVertical + 2.dp
         TileSize.STANDARD   -> shapeScheme.tilePaddingVertical
-    }
+    } * sizeScale.coerceIn(0.9f, 1.1f)
 
     Surface(
         shape = cardShape,
@@ -313,6 +316,8 @@ fun TileCard(
                         )
                 )
             }
+
+            TileShapeDecoration(tileShape, tile.isActive)
 
             // Click / long-press — disabled while editing (parent handles drag)
             val clickModifier = if (!isEditing) {
@@ -413,11 +418,12 @@ fun TileCard(
                         )
                     }
                 }
-                val baseSize = when (tileSize) {
+                val baseFontSize = when (tileSize) {
                     TileSize.COMPACT    -> if (columns >= 5) 8.5.sp else 9.5.sp
                     TileSize.COMFORTABLE -> if (columns >= 5) 9.5.sp else 12.sp
                     TileSize.STANDARD   -> if (columns >= 5) 8.5.sp else 10.5.sp
-                }
+                }.value
+                val baseSize = (baseFontSize * sizeScale).coerceIn(8.5f, 14f).sp
                 val rawLabel = tile.label.ifBlank { humanizeTileLabel(tile.id) }
                 val displayLabel = when {
                     tile.id.lowercase().contains("rotation") -> if (tile.isActive) "Auto rotate" else "Portrait"

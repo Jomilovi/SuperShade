@@ -26,12 +26,25 @@ enum class TileShape(val id: String, val label: String, val cornerRadiusDp: Int)
     SQUIRCLE("squircle", "Squircle", 22),
     ROUNDED("rounded", "Rounded", 16),
     CIRCLE("circle", "Circle", 50),
+    CIRCLE_OUTLINE("circle_outline", "Circle Outline", 50),
+    CIRCLE_DASH("circle_dash", "Circle Dash", 50),
+    CIRCLE_SLICE("circle_slice", "Circle Slice", 50),
+    CIRCLE_GRADIENT("circle_gradient", "Circle Gradient", 50),
+    CIRCLE_HOLO("circle_holo", "Circle Holo", 50),
+    TEARDROP("teardrop", "Teardrop", 28),
+    ROUNDED_RECTANGLE("rounded_rectangle", "Rounded Rectangle", 18),
+    ROUNDED_RECTANGLE_OUTLINE("rounded_rectangle_outline", "Rounded Rectangle Outline", 18),
+    RECTANGLE("rectangle", "Rectangle", 0),
+    RECTANGLE_OUTLINE("rectangle_outline", "Rectangle Outline", 0),
+    HEXAGON("hexagon", "Hexagon", 8),
+    PENTAGON("pentagon", "Pentagon", 8),
     PILL("pill", "Stadium Pill", 28),
     SOFT("soft", "Soft Minimal", 12),
     LEAF("leaf", "Asymmetric Leaf", 24),
     SHARP("sharp", "Sharp Modern", 6),
     CLOVER("clover", "Clover 4-Leaf", 20),
-    BURST("burst", "M3E SoftBurst", 20);
+    BURST("burst", "M3E SoftBurst", 20),
+    OWL("owl", "Owl Head", 20);
 }
 
 enum class CardBorderWidth(val id: String, val label: String, val widthDp: Float) {
@@ -238,6 +251,7 @@ class ShadeSettings(private val context: Context) {
         private val QS_TILE_TAP_ACTION_KEY = stringPreferencesKey("qs_tile_tap_action")
         private val TILE_SHAPE_KEY = stringPreferencesKey("tile_shape")
         private val TILE_SIZE_KEY = stringPreferencesKey("tile_size")
+        private val TILE_HEIGHT_DP_KEY = intPreferencesKey("tile_height_dp")
         private val TILE_COLUMNS_KEY = stringPreferencesKey("tile_columns")
         private val SHOW_WIDE_CARDS_KEY = booleanPreferencesKey("show_wide_cards")
         private val SPLIT_GESTURE_MODE_KEY = stringPreferencesKey("split_gesture_mode")
@@ -339,15 +353,7 @@ class ShadeSettings(private val context: Context) {
     }
 
     val tileShape: Flow<TileShape> = context.dataStore.data.map { prefs ->
-        when (prefs[TILE_SHAPE_KEY]) {
-            "rounded" -> TileShape.ROUNDED
-            "circle" -> TileShape.CIRCLE
-            "pill" -> TileShape.PILL
-            "soft" -> TileShape.SOFT
-            "leaf" -> TileShape.LEAF
-            "sharp" -> TileShape.SHARP
-            else -> TileShape.SQUIRCLE
-        }
+        TileShape.entries.firstOrNull { it.id == prefs[TILE_SHAPE_KEY] } ?: TileShape.SQUIRCLE
     }
 
     val tileSize: Flow<TileSize> = context.dataStore.data.map { prefs ->
@@ -356,6 +362,15 @@ class ShadeSettings(private val context: Context) {
             "comfortable" -> TileSize.COMFORTABLE
             else -> TileSize.STANDARD
         }
+    }
+
+    val tileHeightDp: Flow<Int> = context.dataStore.data.map { prefs ->
+        val legacyHeight = when (prefs[TILE_SIZE_KEY]) {
+            "compact" -> TileSize.COMPACT.heightDp
+            "comfortable" -> TileSize.COMFORTABLE.heightDp
+            else -> TileSize.STANDARD.heightDp
+        }
+        (prefs[TILE_HEIGHT_DP_KEY] ?: legacyHeight).coerceIn(52, 100)
     }
 
     val torchStrengthLevel: Flow<Int> = context.dataStore.data.map { prefs ->
@@ -479,6 +494,12 @@ class ShadeSettings(private val context: Context) {
     suspend fun setTileSize(size: TileSize) {
         context.dataStore.edit { prefs ->
             prefs[TILE_SIZE_KEY] = size.id
+        }
+    }
+
+    suspend fun setTileHeightDp(heightDp: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[TILE_HEIGHT_DP_KEY] = heightDp.coerceIn(52, 100)
         }
     }
 

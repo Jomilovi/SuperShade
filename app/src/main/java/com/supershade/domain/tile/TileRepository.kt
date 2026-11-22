@@ -79,6 +79,7 @@ class TileRepository(
         try {
             val filter = android.content.IntentFilter().apply {
                 addAction(WifiManager.WIFI_STATE_CHANGED_ACTION)
+                addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION)
                 addAction(android.bluetooth.BluetoothAdapter.ACTION_STATE_CHANGED)
                 addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
                 addAction(android.content.Intent.ACTION_AIRPLANE_MODE_CHANGED)
@@ -262,11 +263,11 @@ class TileRepository(
         return try {
             when {
                 key.contains("wifi") || key.contains("internet") -> {
-                    val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+                    val appContext = context.applicationContext
+                    val wm = appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
                     if (wm?.isWifiEnabled != true) return null
-                    @Suppress("DEPRECATION")
-                    val raw = wm.connectionInfo?.ssid?.trim('"')
-                    if (!raw.isNullOrBlank() && raw != "<unknown ssid>") raw else "Connected"
+                    appContext.wifiNetworkNameAccessHint()?.let { return it }
+                    appContext.connectedWifiSsid() ?: "Connected"
                 }
                 key.contains("bt") || key.contains("bluetooth") -> {
                     val bm = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager

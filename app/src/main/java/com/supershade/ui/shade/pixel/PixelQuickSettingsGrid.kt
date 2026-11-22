@@ -60,6 +60,8 @@ import com.supershade.domain.tile.humanizeTileLabel
 import com.supershade.haptics.LocalSuperHaptics
 import com.supershade.haptics.SuperHaptics
 import com.supershade.ui.shade.tileIcon
+import com.supershade.settings.TileShape
+import com.supershade.settings.TileSize
 import com.supershade.ui.theme.getCardBorder
 import kotlin.math.roundToInt
 
@@ -71,6 +73,8 @@ import kotlin.math.roundToInt
 @Composable
 fun PixelQuickSettingsGrid(
     tiles: List<TileDefinition>,
+    tileShape: TileShape = TileShape.SQUIRCLE,
+    tileHeightDp: Int = TileSize.STANDARD.heightDp,
     isExpanded: Boolean = false,
     isEditing: Boolean = false,
     onToggleEdit: () -> Unit = {},
@@ -179,6 +183,8 @@ fun PixelQuickSettingsGrid(
         if (isEditing) {
             DraggablePixelTileGrid(
                 tiles = displayedTiles,
+                tileShape = tileShape,
+                tileHeightDp = tileHeightDp,
                 haptics = haptics,
                 onMoveTile = onMoveTile,
                 onRemoveTile = onRemoveTile,
@@ -193,6 +199,8 @@ fun PixelQuickSettingsGrid(
                         Box(modifier = Modifier.weight(1f)) {
                             PixelTilePill(
                                 tile = tile,
+                                tileShape = tileShape,
+                                tileHeightDp = tileHeightDp,
                                 onClick = { onTileClick(tile) },
                                 onLongClick = onTileLongClick?.let { cb -> { cb(tile) } },
                                 isEditing = false,
@@ -275,6 +283,8 @@ fun PixelQuickSettingsGrid(
 @Composable
 private fun DraggablePixelTileGrid(
     tiles: List<TileDefinition>,
+    tileShape: TileShape,
+    tileHeightDp: Int,
     haptics: SuperHaptics,
     onMoveTile: (Int, Int) -> Unit,
     onRemoveTile: (String) -> Unit,
@@ -402,6 +412,8 @@ private fun DraggablePixelTileGrid(
                         ) {
                             PixelTilePill(
                                 tile = tile,
+                                tileShape = tileShape,
+                                tileHeightDp = tileHeightDp,
                                 onClick = {},
                                 onLongClick = null,
                                 isEditing = true,
@@ -441,6 +453,8 @@ private fun DraggablePixelTileGrid(
                 ) {
                     PixelTilePill(
                         tile = ghostTile,
+                        tileShape = tileShape,
+                        tileHeightDp = tileHeightDp,
                         onClick = {},
                         onLongClick = null,
                         isEditing = true,

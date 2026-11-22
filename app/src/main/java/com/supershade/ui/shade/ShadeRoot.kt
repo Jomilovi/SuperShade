@@ -666,6 +666,8 @@ fun ShadeRoot(
                                     ) {
                                         PixelQuickSettingsGrid(
                                             tiles = state.tiles,
+                                            tileShape = state.tileShape,
+                                            tileHeightDp = state.tileHeightDp,
                                             isExpanded = isQsExpanded,
                                             isEditing = isEditingTiles,
                                             onToggleEdit = { isEditingTiles = !isEditingTiles },
@@ -721,6 +723,7 @@ fun ShadeRoot(
                                             isExpanded = isQsExpanded,
                                             tileShape = state.tileShape,
                                             tileSize = state.tileSize,
+                                            tileHeightDp = state.tileHeightDp,
                                             tileColumns = state.tileColumns,
                                             showWideCards = isQsExpanded && state.showWideCards,
                                             isEditing = isEditingTiles,
@@ -970,6 +973,8 @@ fun ShadeRoot(
                                     if (state.theme == ShadeTheme.Pixel) {
                                         PixelQuickSettingsGrid(
                                             tiles = state.tiles,
+                                            tileShape = state.tileShape,
+                                            tileHeightDp = state.tileHeightDp,
                                             isExpanded = true,
                                             isEditing = isEditingTiles,
                                             onToggleEdit = { isEditingTiles = !isEditingTiles },
@@ -1005,6 +1010,7 @@ fun ShadeRoot(
                                             isExpanded = true,
                                             tileShape = state.tileShape,
                                             tileSize = state.tileSize,
+                                            tileHeightDp = state.tileHeightDp,
                                             tileColumns = state.tileColumns,
                                             showWideCards = state.showWideCards,
                                             isEditing = isEditingTiles,

@@ -115,6 +115,8 @@ import com.supershade.settings.SplitGestureMode
 import com.supershade.settings.TileGridColumns
 import com.supershade.settings.TileShape
 import com.supershade.settings.TileSize
+import com.supershade.ui.shade.TileShapeDecoration
+import com.supershade.ui.shade.isOutlineStyle
 import com.supershade.ui.theme.LocalBackdropTheme
 import com.supershade.ui.theme.LocalCardBorderWidth
 import com.supershade.ui.theme.LocalShadeShapeScheme
@@ -164,6 +166,8 @@ fun SettingsScreen(
     overlayGranted: Boolean,
     writeSettingsGranted: Boolean = false,
     accessibilityGranted: Boolean = false,
+    wifiNetworkNamePermissionGranted: Boolean = false,
+    onRequestWifiNetworkNamePermission: () -> Unit = {},
     shadeActive: Boolean,
     blockSystemShade: Boolean = true,
     selectedTheme: ShadeTheme,
@@ -207,8 +211,9 @@ fun SettingsScreen(
     onPreviewShade: () -> Unit = {},
     tileShape: TileShape = TileShape.SQUIRCLE,
     onTileShapeChange: (TileShape) -> Unit = {},
-    tileSize: TileSize = TileSize.STANDARD,
     onTileSizeChange: (TileSize) -> Unit = {},
+    tileHeightDp: Int = TileSize.STANDARD.heightDp,
+    onTileHeightChange: (Int) -> Unit = {},
     tileColumns: TileGridColumns = TileGridColumns.STANDARD,
     onTileColumnsChange: (TileGridColumns) -> Unit = {},
     showWideCards: Boolean = true,
@@ -234,6 +239,7 @@ fun SettingsScreen(
         accessibilityGranted,
         writeSettingsGranted,
         shizukuOk,
+        wifiNetworkNamePermissionGranted,
     ).count { it }
 
     val shapeScheme = remember(tileShape) { ShadeShapeScheme.fromTileShape(tileShape) }
@@ -450,11 +456,11 @@ fun SettingsScreen(
         // =======================================================================
         // 3. SYSTEM INTEGRATION & PERMISSIONS HUB
         // =======================================================================
-        var permissionsExpanded by remember { mutableStateOf(activeServiceCount < 5) }
+        var permissionsExpanded by remember { mutableStateOf(activeServiceCount < 6) }
 
         SectionHeader(
             title = "System Integration",
-            badge = "$activeServiceCount of 5 ready",
+            badge = "$activeServiceCount of 6 ready",
             badgeColor = if (allEssentialGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
         )
 
@@ -465,7 +471,7 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                if (activeServiceCount == 5) {
+                if (activeServiceCount == 6) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -492,7 +498,7 @@ fun SettingsScreen(
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Text(
-                                    text = "Notifications, Overlay, Accessibility, Settings, & Shizuku ready",
+                                    text = "Notifications, Wi-Fi name, Overlay, Accessibility, Settings & Shizuku ready",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -527,6 +533,18 @@ fun SettingsScreen(
                                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 )
                             },
+                        )
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f))
+
+                        PermissionRow(
+                            icon = Icons.Default.Wifi,
+                            title = "Wi-Fi network name",
+                            subtitle = "Lets the Wi-Fi button show the connected network name",
+                            isGranted = wifiNetworkNamePermissionGranted,
+                            isRecommended = true,
+                            actionText = if (wifiNetworkNamePermissionGranted) "Active" else "Grant",
+                            onClick = if (wifiNetworkNamePermissionGranted) null else onRequestWifiNetworkNamePermission,
                         )
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f))
@@ -2545,22 +2563,15 @@ fun SettingsScreen(
                     ) {
                         TileShape.entries.forEach { shape ->
                             val isSelected = tileShape == shape
-                            val previewCorner = when (shape) {
-                                TileShape.SQUIRCLE -> RoundedCornerShape(22.dp)
-                                TileShape.ROUNDED -> RoundedCornerShape(16.dp)
-                                TileShape.CIRCLE -> CircleShape
-                                TileShape.PILL -> RoundedCornerShape(28.dp)
-                                TileShape.SOFT -> RoundedCornerShape(12.dp)
-                                TileShape.LEAF -> RoundedCornerShape(topStart = 24.dp, bottomEnd = 24.dp, topEnd = 8.dp, bottomStart = 8.dp)
-                                TileShape.SHARP -> RoundedCornerShape(6.dp)
-                                TileShape.CLOVER -> com.supershade.ui.theme.M3ExpressiveShapes.Clover4.toComposeShape()
-                                TileShape.BURST -> com.supershade.ui.theme.M3ExpressiveShapes.SoftBurst8.toComposeShape()
-                            }
+                            val outlineStyle = shape.isOutlineStyle()
+                            val previewCorner = com.supershade.ui.theme.ShadeShapeScheme.fromTileShape(shape).tile
                             Surface(
                                 shape = previewCorner,
-                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                color = if (outlineStyle) MaterialTheme.colorScheme.surfaceContainerHigh
+                                    else if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceContainerHigh,
                                 border = BorderStroke(
-                                    width = if (isSelected) 2.dp else 1.dp,
+                                    width = if (outlineStyle && isSelected) 1.7.dp else if (isSelected) 2.dp else 1.dp,
                                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.30f),
                                 ),
                                 modifier = Modifier
@@ -2568,44 +2579,78 @@ fun SettingsScreen(
                                     .height(68.dp)
                                     .clickable { onTileShapeChange(shape) },
                             ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                                    verticalArrangement = Arrangement.SpaceBetween,
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically,
+                                Box(Modifier.fillMaxSize()) {
+                                    TileShapeDecoration(shape, isActive = true)
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                                        verticalArrangement = Arrangement.SpaceBetween,
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Widgets,
-                                            contentDescription = null,
-                                            tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                        if (isSelected) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(6.dp)
-                                                    .clip(CircleShape)
-                                                    .background(MaterialTheme.colorScheme.primary),
-                                            )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            if (shape == TileShape.OWL) {
+                                                Text(text = "🦉", fontSize = 20.sp)
+                                            } else {
+                                                Icon(
+                                                    imageVector = Icons.Default.Widgets,
+                                                    contentDescription = null,
+                                                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(18.dp),
+                                                )
+                                            }
+                                            if (isSelected) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(6.dp)
+                                                        .clip(CircleShape)
+                                                        .background(MaterialTheme.colorScheme.primary),
+                                                )
+                                            }
                                         }
+                                        Text(
+                                            text = shape.label,
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                fontSize = 10.5.sp,
+                                            ),
+                                            color = if (isSelected && !outlineStyle) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
                                     }
-                                    Text(
-                                        text = shape.label,
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                            fontSize = 10.5.sp,
-                                        ),
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
                                 }
                             }
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f))
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Active Quick Button Color",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    )
+                    Text(
+                        text = "Choose the color used by active quick buttons",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AccentColor.entries.forEach { accent ->
+                            ColorPaletteSwatch(
+                                accent = accent,
+                                isSelected = selectedAccentColor == accent,
+                                onClick = { onAccentColorChange(accent) },
+                            )
                         }
                     }
                 }
@@ -2619,11 +2664,7 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                     )
                     Text(
-                        text = when (tileSize) {
-                            TileSize.COMPACT -> "Compact (58dp): Streamlined profile leaving extra space for notifications and media"
-                            TileSize.COMFORTABLE -> "Tall & Spacious (84dp): Large touch targets and enhanced thumb readability"
-                            else -> "Standard (72dp): Balanced One UI 8 height with clear icon, label & status"
-                        },
+                        text = "Current height: ${tileHeightDp}dp. Icons and labels scale with the buttons.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -2635,7 +2676,7 @@ fun SettingsScreen(
                     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                         sizeOptions.forEachIndexed { index, (sizeOption, label) ->
                             SegmentedButton(
-                                selected = tileSize == sizeOption,
+                                selected = tileHeightDp == sizeOption.heightDp,
                                 onClick = { onTileSizeChange(sizeOption) },
                                 shape = SegmentedButtonDefaults.itemShape(index, sizeOptions.size),
                                 icon = {},
@@ -2646,6 +2687,19 @@ fun SettingsScreen(
                                 )
                             }
                         }
+                    }
+                    Slider(
+                        value = tileHeightDp.toFloat(),
+                        onValueChange = { onTileHeightChange(it.roundToInt()) },
+                        valueRange = 52f..100f,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text("52dp", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("100dp", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
