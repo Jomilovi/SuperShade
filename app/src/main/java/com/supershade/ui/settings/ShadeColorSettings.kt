@@ -48,12 +48,13 @@ fun ShadeColorSettings(
         ShadeColorTarget.BRIGHTNESS_SLIDER to "Deslizador de brillo",
         ShadeColorTarget.NOTIFICATION_TEXT to "Texto de notificaciones",
     )
+    val colorScheme = MaterialTheme.colorScheme
     fun defaultColor(target: ShadeColorTarget): Color = when (target) {
-        ShadeColorTarget.PANEL_BACKGROUND -> MaterialTheme.colorScheme.background
-        ShadeColorTarget.NOTIFICATION_BACKGROUND -> MaterialTheme.colorScheme.surfaceContainer
-        ShadeColorTarget.ACTIVE_CONTROL -> MaterialTheme.colorScheme.primary
-        ShadeColorTarget.GENERAL_TEXT, ShadeColorTarget.NOTIFICATION_TEXT -> MaterialTheme.colorScheme.onSurface
-        ShadeColorTarget.BRIGHTNESS_SLIDER -> MaterialTheme.colorScheme.primary
+        ShadeColorTarget.PANEL_BACKGROUND -> colorScheme.background
+        ShadeColorTarget.NOTIFICATION_BACKGROUND -> colorScheme.surfaceContainer
+        ShadeColorTarget.ACTIVE_CONTROL -> colorScheme.primary
+        ShadeColorTarget.GENERAL_TEXT, ShadeColorTarget.NOTIFICATION_TEXT -> colorScheme.onSurface
+        ShadeColorTarget.BRIGHTNESS_SLIDER -> colorScheme.primary
     }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         targets.forEach { (target, label) ->

@@ -3,6 +3,7 @@ package com.supershade.ui.theme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 
 enum class ShadeColorTarget {
     PANEL_BACKGROUND,

@@ -86,7 +86,7 @@ class TileRepository(
                 addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED)
                 addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED)
                 addAction(android.bluetooth.BluetoothDevice.ACTION_BOND_STATE_CHANGED)
-                addAction(android.bluetooth.BluetoothProfile.ACTION_CONNECTION_STATE_CHANGED)
+                addAction(android.bluetooth.BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)
                 addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
                 addAction(android.content.Intent.ACTION_AIRPLANE_MODE_CHANGED)
                 addAction(LocationManager.MODE_CHANGED_ACTION)

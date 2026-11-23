@@ -804,6 +804,7 @@ fun NotificationCard(
                         progressMax = notification.progressMax,
                         isIndeterminate = notification.isProgressIndeterminate,
                         shadeTheme = shadeTheme,
+                        notificationTextColor = notificationTextColor,
                     )
                 }
 
@@ -1260,6 +1261,7 @@ private fun ThemedNotificationProgressBar(
     progressMax: Int,
     isIndeterminate: Boolean,
     shadeTheme: ShadeTheme,
+    notificationTextColor: Color?,
 ) {
     val pct = if (progressMax > 0) ((progress.toFloat() / progressMax) * 100).roundToInt().coerceIn(0, 100) else 0
     val fraction = if (progressMax > 0) (progress.toFloat() / progressMax).coerceIn(0f, 1f) else 0f
