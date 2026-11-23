@@ -447,12 +447,17 @@ class ShadeViewModel(
             id.contains("wifi") || id.contains("internet") -> {
                 val cm = context.getSystemService(ConnectivityManager::class.java)
                 val info = context.connectedWifiInfo()
+                val wifiConnected = try {
+                    val activeNetwork = cm?.activeNetwork
+                    activeNetwork != null && cm.getNetworkCapabilities(activeNetwork)
+                        ?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true
+                } catch (_: Exception) { false }
                 val ssid = if (tile.isActive) {
                     context.connectedWifiSsid()
                         ?: context.wifiNetworkNameAccessHint()
-                        ?: "Connected Wi-Fi"
+                        ?: if (wifiConnected) "Conectado" else "Sin conexión"
                 } else {
-                    "Wi-Fi Disconnected"
+                    "Wi-Fi apagado"
                 }
 
                 val freq = info?.frequency ?: 0

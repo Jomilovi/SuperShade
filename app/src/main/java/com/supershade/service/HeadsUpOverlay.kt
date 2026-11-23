@@ -93,12 +93,14 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Density
 import com.supershade.ui.shade.AudioOutputChip
 import com.supershade.ui.theme.ChamferedCornerShape
 import androidx.compose.ui.unit.dp
@@ -206,6 +208,9 @@ class HeadsUpOverlay(
                     val activeShadeColors by produceState(ShadeColorCustomization()) {
                         settings?.shadeColorCustomization?.collect { value = it }
                     }
+                    val activeHeadsUpTextSize by produceState(com.supershade.settings.HeadsUpTextSize.NORMAL) {
+                        settings?.headsUpTextSize?.collect { value = it }
+                    }
 
                     val isAmoled = activeDarkMode == DarkThemeMode.AMOLED
                     val themeWrapper: @Composable (@Composable () -> Unit) -> Unit = when (activeTheme) {
@@ -235,10 +240,16 @@ class HeadsUpOverlay(
                     }
 
                     val superHaptics = remember { SuperHaptics(context) }
+                    val baseDensity = LocalDensity.current
+                    val headsUpDensity = Density(
+                        density = baseDensity.density,
+                        fontScale = baseDensity.fontScale * activeHeadsUpTextSize.scale,
+                    )
                     CompositionLocalProvider(
                         LocalShadeTheme provides activeTheme,
                         LocalShadeColorCustomization provides activeShadeColors,
                         LocalSuperHaptics provides superHaptics,
+                        LocalDensity provides headsUpDensity,
                     ) {
                         themeWrapper {
                             HeadsUpCard(

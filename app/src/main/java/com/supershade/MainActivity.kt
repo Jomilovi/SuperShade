@@ -80,6 +80,8 @@ class MainActivity : ComponentActivity() {
             val backdropOpacity by settings.backdropOpacity.collectAsState(initial = 0.78f)
             val notificationDensity by settings.notificationDensity.collectAsState(initial = com.supershade.settings.NotificationDensity.BALANCED)
             val notificationTextSize by settings.notificationTextSize.collectAsState(initial = com.supershade.settings.NotificationTextSize.NORMAL)
+            val headsUpTextSize by settings.headsUpTextSize.collectAsState(initial = com.supershade.settings.HeadsUpTextSize.NORMAL)
+            val mobileDataCustomName by settings.mobileDataCustomName.collectAsState(initial = "")
             val isActive by settings.isActive.collectAsState(initial = false)
             val blockSystemShade by settings.blockSystemShade.collectAsState(initial = true)
             val tileShape by settings.tileShape.collectAsState(initial = com.supershade.settings.TileShape.SQUIRCLE)
@@ -206,6 +208,7 @@ class MainActivity : ComponentActivity() {
                         selectedAccentColor = accentColor,
                         shadeColors = shadeColors,
                         onShadeColorChange = { target, color -> scope.launch { settings.setShadeColor(target, color) } },
+                        onAccentPaletteColorChange = { color -> scope.launch { settings.setCustomAccentColor(color) } },
                         backdropTheme = backdropTheme,
                         backdropOpacity = backdropOpacity,
                         notificationDensity = notificationDensity,
@@ -217,6 +220,15 @@ class MainActivity : ComponentActivity() {
                         onNotificationTextSizeChange = { newSize ->
                             superHaptics.sliderTick()
                             scope.launch { settings.setNotificationTextSize(newSize) }
+                        },
+                        headsUpTextSize = headsUpTextSize,
+                        onHeadsUpTextSizeChange = { size ->
+                            superHaptics.sliderTick()
+                            scope.launch { settings.setHeadsUpTextSize(size) }
+                        },
+                        mobileDataCustomName = mobileDataCustomName,
+                        onMobileDataCustomNameChange = { name ->
+                            scope.launch { settings.setMobileDataCustomName(name) }
                         },
                         classificationMode = classificationMode,
                         onClassificationModeChange = { mode ->

@@ -82,6 +82,13 @@ enum class NotificationTextSize(val id: String, val label: String, val scale: Fl
     EXTRA_LARGE("extra_large", "Extra grande", 1.30f),
 }
 
+enum class HeadsUpTextSize(val id: String, val label: String, val scale: Float) {
+    SMALL("small", "Pequeño", 0.85f),
+    NORMAL("normal", "Normal", 1.00f),
+    LARGE("large", "Grande", 1.15f),
+    EXTRA("extra", "Extra", 1.30f),
+}
+
 enum class NotificationDensity(
     val id: String,
     val label: String,
@@ -253,6 +260,7 @@ class ShadeSettings(private val context: Context) {
         private val THEME_KEY = stringPreferencesKey("theme")
         private val DARK_MODE_KEY = stringPreferencesKey("dark_mode")
         private val ACCENT_COLOR_KEY = stringPreferencesKey("accent_color")
+        private val CUSTOM_ACCENT_COLOR_KEY = longPreferencesKey("custom_accent_color")
         private val IS_ACTIVE_KEY = booleanPreferencesKey("is_active")
         private val ENABLED_TILES_KEY = stringPreferencesKey("enabled_tiles")
         private val LAST_SEEN_VERSION_KEY = stringPreferencesKey("last_seen_version")
@@ -282,11 +290,14 @@ class ShadeSettings(private val context: Context) {
         private val PANEL_BACKGROUND_COLOR_KEY = longPreferencesKey("panel_background_color")
         private val NOTIFICATION_BACKGROUND_COLOR_KEY = longPreferencesKey("notification_background_color")
         private val ACTIVE_CONTROL_COLOR_KEY = longPreferencesKey("active_control_color")
+        private val ACTIVE_CONTROL_TEXT_COLOR_KEY = longPreferencesKey("active_control_text_color")
         private val GENERAL_TEXT_COLOR_KEY = longPreferencesKey("general_text_color")
         private val BRIGHTNESS_SLIDER_COLOR_KEY = longPreferencesKey("brightness_slider_color")
         private val NOTIFICATION_TEXT_COLOR_KEY = longPreferencesKey("notification_text_color")
         private val DISMISS_ACTION_BACKGROUND_COLOR_KEY = longPreferencesKey("dismiss_action_background_color")
         private val NOTIFICATION_TEXT_SIZE_KEY = stringPreferencesKey("notification_text_size")
+        private val HEADS_UP_TEXT_SIZE_KEY = stringPreferencesKey("heads_up_text_size")
+        private val MOBILE_DATA_CUSTOM_NAME_KEY = stringPreferencesKey("mobile_data_custom_name")
     }
 
     val backdropTheme: Flow<BackdropTheme> = context.dataStore.data.map { prefs ->
@@ -327,6 +338,15 @@ class ShadeSettings(private val context: Context) {
             ?: NotificationTextSize.NORMAL
     }
 
+    val headsUpTextSize: Flow<HeadsUpTextSize> = context.dataStore.data.map { prefs ->
+        HeadsUpTextSize.entries.firstOrNull { it.id == prefs[HEADS_UP_TEXT_SIZE_KEY] }
+            ?: HeadsUpTextSize.NORMAL
+    }
+
+    val mobileDataCustomName: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[MOBILE_DATA_CUSTOM_NAME_KEY].orEmpty()
+    }
+
     val darkThemeMode: Flow<com.supershade.ui.theme.DarkThemeMode> = context.dataStore.data.map { prefs ->
         when (prefs[DARK_MODE_KEY]) {
             "dark" -> com.supershade.ui.theme.DarkThemeMode.DARK
@@ -354,6 +374,8 @@ class ShadeSettings(private val context: Context) {
             panelBackground = color(PANEL_BACKGROUND_COLOR_KEY),
             notificationBackground = color(NOTIFICATION_BACKGROUND_COLOR_KEY),
             activeControl = color(ACTIVE_CONTROL_COLOR_KEY),
+            activeControlText = color(ACTIVE_CONTROL_TEXT_COLOR_KEY),
+            accentPalette = color(CUSTOM_ACCENT_COLOR_KEY),
             generalText = color(GENERAL_TEXT_COLOR_KEY),
             brightnessSlider = color(BRIGHTNESS_SLIDER_COLOR_KEY),
             notificationText = color(NOTIFICATION_TEXT_COLOR_KEY),
@@ -488,6 +510,20 @@ class ShadeSettings(private val context: Context) {
         }
     }
 
+    suspend fun setHeadsUpTextSize(size: HeadsUpTextSize) {
+        context.dataStore.edit { prefs ->
+            prefs[HEADS_UP_TEXT_SIZE_KEY] = size.id
+        }
+    }
+
+    suspend fun setMobileDataCustomName(name: String) {
+        context.dataStore.edit { prefs ->
+            val normalized = name.trim().take(40)
+            if (normalized.isEmpty()) prefs.remove(MOBILE_DATA_CUSTOM_NAME_KEY)
+            else prefs[MOBILE_DATA_CUSTOM_NAME_KEY] = normalized
+        }
+    }
+
     suspend fun setDarkThemeMode(mode: com.supershade.ui.theme.DarkThemeMode) {
         context.dataStore.edit { prefs ->
             prefs[DARK_MODE_KEY] = when (mode) {
@@ -509,6 +545,14 @@ class ShadeSettings(private val context: Context) {
                 AccentColor.MONET -> "monet"
                 AccentColor.GALAXY_BLUE -> "galaxy_blue"
             }
+            prefs.remove(CUSTOM_ACCENT_COLOR_KEY)
+        }
+    }
+
+    suspend fun setCustomAccentColor(color: Color?) {
+        context.dataStore.edit { prefs ->
+            if (color == null) prefs.remove(CUSTOM_ACCENT_COLOR_KEY)
+            else prefs[CUSTOM_ACCENT_COLOR_KEY] = color.value.toLong()
         }
     }
 
@@ -517,6 +561,7 @@ class ShadeSettings(private val context: Context) {
             ShadeColorTarget.PANEL_BACKGROUND -> PANEL_BACKGROUND_COLOR_KEY
             ShadeColorTarget.NOTIFICATION_BACKGROUND -> NOTIFICATION_BACKGROUND_COLOR_KEY
             ShadeColorTarget.ACTIVE_CONTROL -> ACTIVE_CONTROL_COLOR_KEY
+            ShadeColorTarget.ACTIVE_CONTROL_TEXT -> ACTIVE_CONTROL_TEXT_COLOR_KEY
             ShadeColorTarget.GENERAL_TEXT -> GENERAL_TEXT_COLOR_KEY
             ShadeColorTarget.BRIGHTNESS_SLIDER -> BRIGHTNESS_SLIDER_COLOR_KEY
             ShadeColorTarget.NOTIFICATION_TEXT -> NOTIFICATION_TEXT_COLOR_KEY

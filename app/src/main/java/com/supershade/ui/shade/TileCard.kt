@@ -39,6 +39,7 @@ import com.supershade.haptics.LocalSuperHaptics
 import com.supershade.haptics.SuperHaptics
 import com.supershade.ui.theme.BackdropTheme
 import com.supershade.ui.theme.LocalBackdropTheme
+import com.supershade.ui.theme.LocalShadeColorCustomization
 import com.supershade.ui.theme.getCardBorder
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -229,8 +230,8 @@ fun TileCard(
     )
     val contentColor by animateColorAsState(
         targetValue = when {
-            tile.isActive && appliedTileShape.isOutlineStyle() -> MaterialTheme.colorScheme.primary
-            tile.isActive -> MaterialTheme.colorScheme.onPrimary
+            tile.isActive && appliedTileShape.isOutlineStyle() -> LocalShadeColorCustomization.current.activeControlText ?: MaterialTheme.colorScheme.primary
+            tile.isActive -> LocalShadeColorCustomization.current.activeControlText ?: MaterialTheme.colorScheme.onPrimary
             else -> MaterialTheme.colorScheme.onSurface
         },
         animationSpec = com.supershade.ui.theme.M3ExpressiveMotion.effectsDefault(),
@@ -434,7 +435,7 @@ fun TileCard(
                 val isWifiTile = tile.id.lowercase().let { it.contains("wifi") || it.contains("internet") }
                 val showWifiName = isWifiTile &&
                     tile.isActive &&
-                    tile.subtitle.equals("Encendido", ignoreCase = true) &&
+                    tile.subtitle.equals("Conectado", ignoreCase = true) &&
                     !isEditing
                 val displayLabel = when {
                     tile.id.lowercase().contains("rotation") -> if (tile.isActive) "Auto rotate" else "Portrait"

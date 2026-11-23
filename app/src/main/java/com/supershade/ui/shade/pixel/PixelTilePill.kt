@@ -56,6 +56,7 @@ import com.supershade.haptics.SuperHaptics
 import com.supershade.ui.shade.tileIcon
 import com.supershade.ui.theme.M3ExpressiveMotion
 import com.supershade.ui.theme.M3ExpressiveShapes
+import com.supershade.ui.theme.LocalShadeColorCustomization
 import com.supershade.ui.theme.getCardBorder
 import com.supershade.ui.theme.rememberMorphShape
 import com.supershade.settings.TileShape
@@ -167,8 +168,8 @@ fun PixelTilePill(
     val onPillColor by animateColorAsState(
         targetValue = when {
             isEditing -> MaterialTheme.colorScheme.onSurface
-            isActive && appliedTileShape.isOutlineStyle() -> MaterialTheme.colorScheme.primary
-            isActive -> MaterialTheme.colorScheme.onPrimary
+            isActive && appliedTileShape.isOutlineStyle() -> LocalShadeColorCustomization.current.activeControlText ?: MaterialTheme.colorScheme.primary
+            isActive -> LocalShadeColorCustomization.current.activeControlText ?: MaterialTheme.colorScheme.onPrimary
             else -> MaterialTheme.colorScheme.onSurface
         },
         animationSpec = M3ExpressiveMotion.effectsDefault(),
@@ -188,7 +189,7 @@ fun PixelTilePill(
     val iconTint by animateColorAsState(
         targetValue = when {
             isEditing -> MaterialTheme.colorScheme.onSurfaceVariant
-            isActive -> MaterialTheme.colorScheme.onPrimary
+            isActive -> LocalShadeColorCustomization.current.activeControlText ?: MaterialTheme.colorScheme.onPrimary
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         },
         animationSpec = M3ExpressiveMotion.effectsDefault(),
@@ -202,7 +203,7 @@ fun PixelTilePill(
     }
     val showWifiName = tile.isActive &&
         tile.id.lowercase().let { it.contains("wifi") || it.contains("internet") } &&
-        tile.subtitle.equals("Encendido", ignoreCase = true) &&
+        tile.subtitle.equals("Conectado", ignoreCase = true) &&
         !isEditing
     val subtitleText = when {
         tile.id.lowercase().contains("rotation") -> if (isActive) "On" else "Off"

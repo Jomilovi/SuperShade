@@ -13,6 +13,7 @@ import com.supershade.ui.theme.BackdropTheme
 import com.supershade.ui.theme.LocalBackdropTheme
 import com.supershade.ui.theme.LocalShadeShapeScheme
 import com.supershade.ui.theme.LocalShadeAmoledMode
+import com.supershade.ui.theme.LocalShadeColorCustomization
 import com.supershade.ui.theme.getCardBorder
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -699,8 +700,8 @@ private fun ConnectivityWideCard(
 
     val contentColor by animateColorAsState(
         targetValue = when {
-            tile.isActive && appliedTileShape.isOutlineStyle() -> MaterialTheme.colorScheme.primary
-            tile.isActive -> MaterialTheme.colorScheme.onPrimary
+            tile.isActive && appliedTileShape.isOutlineStyle() -> LocalShadeColorCustomization.current.activeControlText ?: MaterialTheme.colorScheme.primary
+            tile.isActive -> LocalShadeColorCustomization.current.activeControlText ?: MaterialTheme.colorScheme.onPrimary
             else -> when (theme) {
                 is ShadeTheme.Cyberpunk -> Color(0xFF00F0FF).copy(alpha = 0.90f)
                 else -> MaterialTheme.colorScheme.onSurface

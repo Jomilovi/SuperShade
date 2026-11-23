@@ -133,6 +133,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -149,6 +150,7 @@ import com.supershade.ui.theme.ShadeColorTarget
 import com.supershade.settings.ClassificationMode
 import com.supershade.settings.NotificationDensity
 import com.supershade.settings.NotificationTextSize
+import com.supershade.settings.HeadsUpTextSize
 import com.supershade.ui.theme.BackdropTheme
 import com.supershade.ui.theme.DarkThemeMode
 import com.supershade.ui.theme.ShadeTheme
@@ -185,6 +187,10 @@ fun SettingsScreen(
     onNotificationDensityChange: (NotificationDensity) -> Unit = {},
     notificationTextSize: NotificationTextSize = NotificationTextSize.NORMAL,
     onNotificationTextSizeChange: (NotificationTextSize) -> Unit = {},
+    headsUpTextSize: HeadsUpTextSize = HeadsUpTextSize.NORMAL,
+    onHeadsUpTextSizeChange: (HeadsUpTextSize) -> Unit = {},
+    mobileDataCustomName: String = "",
+    onMobileDataCustomNameChange: (String) -> Unit = {},
     classificationMode: ClassificationMode = ClassificationMode.ONE_UI,
     onClassificationModeChange: (ClassificationMode) -> Unit = {},
     showCategoryBar: Boolean = true,
@@ -204,6 +210,7 @@ fun SettingsScreen(
     onBlockSystemShadeChange: (Boolean) -> Unit = {},
     onThemeChange: (ShadeTheme) -> Unit,
     onAccentColorChange: (AccentColor) -> Unit = {},
+    onAccentPaletteColorChange: (Color?) -> Unit = {},
     monetAccentStrength: Float = 1.0f,
     onMonetAccentStrengthChange: (Float) -> Unit = {},
     onDarkModeChange: (DarkThemeMode) -> Unit = {},
@@ -238,6 +245,9 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    var mobileDataNameInput by remember(mobileDataCustomName) {
+        mutableStateOf(mobileDataCustomName)
+    }
     val haptics = com.supershade.haptics.LocalSuperHaptics.current
     val allEssentialGranted = notificationAccessGranted && overlayGranted
     val shizukuOk = shizukuConnected && shizukuPermGranted
@@ -1235,7 +1245,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 // Live Interactive Appearance Studio Canvas
-                val activeAccent = if (selectedAccentColor == AccentColor.MONET || selectedAccentColor.hex == 0L) {
+                val activeAccent = shadeColors.accentPalette ?: if (selectedAccentColor == AccentColor.MONET || selectedAccentColor.hex == 0L) {
                     MaterialTheme.colorScheme.primary
                 } else {
                     Color(selectedAccentColor.hex)
@@ -2461,11 +2471,15 @@ fun SettingsScreen(
                         AccentColor.entries.forEach { accent ->
                             ColorPaletteSwatch(
                                 accent = accent,
-                                isSelected = selectedAccentColor == accent,
+                                isSelected = shadeColors.accentPalette == null && selectedAccentColor == accent,
                                 onClick = { onAccentColorChange(accent) },
                             )
                         }
                     }
+                    AccentPaletteHexPicker(
+                        customColor = shadeColors.accentPalette,
+                        onColorChange = onAccentPaletteColorChange,
+                    )
 
                     AnimatedVisibility(
                         visible = selectedAccentColor == AccentColor.MONET || selectedTheme is ShadeTheme.Pixel || selectedTheme is ShadeTheme.Nothing || selectedTheme is ShadeTheme.Cyberpunk,
@@ -2679,11 +2693,37 @@ fun SettingsScreen(
                         AccentColor.entries.forEach { accent ->
                             ColorPaletteSwatch(
                                 accent = accent,
-                                isSelected = selectedAccentColor == accent,
+                                isSelected = shadeColors.accentPalette == null && selectedAccentColor == accent,
                                 onClick = { onAccentColorChange(accent) },
                             )
                         }
                     }
+                    AccentPaletteHexPicker(
+                        customColor = shadeColors.accentPalette,
+                        onColorChange = onAccentPaletteColorChange,
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Nombre de red personalizado",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    )
+                    Text(
+                        text = "Se muestra en Datos móviles cuando el control está activo. Si lo dejas vacío, se conserva el nombre habitual.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value = mobileDataNameInput,
+                        onValueChange = { value ->
+                            mobileDataNameInput = value.take(40)
+                            onMobileDataCustomNameChange(mobileDataNameInput)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Nombre de red") },
+                        singleLine = true,
+                    )
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f))
@@ -2961,6 +3001,37 @@ fun SettingsScreen(
                                 selected = notificationTextSize == size,
                                 onClick = { onNotificationTextSizeChange(size) },
                                 shape = SegmentedButtonDefaults.itemShape(index, textSizes.size),
+                                icon = {},
+                            ) {
+                                Text(
+                                    text = size.label,
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column {
+                        Text(
+                            text = "Tamaño de texto de notificaciones emergentes",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                        Text(
+                            text = "Ajusta el título y el contenido de las notificaciones emergentes.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    val headsUpSizes = HeadsUpTextSize.entries
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        headsUpSizes.forEachIndexed { index, size ->
+                            SegmentedButton(
+                                selected = headsUpTextSize == size,
+                                onClick = { onHeadsUpTextSizeChange(size) },
+                                shape = SegmentedButtonDefaults.itemShape(index, headsUpSizes.size),
                                 icon = {},
                             ) {
                                 Text(
@@ -3882,3 +3953,96 @@ private fun ColorPaletteSwatch(
         )
     }
 }
+
+@Composable
+private fun AccentPaletteHexPicker(
+    customColor: Color?,
+    onColorChange: (Color?) -> Unit,
+) {
+    var isDialogOpen by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = customColor?.let { "HEX personalizado · ${it.toAccentHex()}" } ?: "Color HEX personalizado",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(onClick = { isDialogOpen = true }) {
+            Text(if (customColor == null) "Ingresar" else "Editar")
+        }
+    }
+
+    if (isDialogOpen) {
+        var hex by remember(customColor) { mutableStateOf(customColor?.toAccentHex().orEmpty()) }
+        val parsed = remember(hex) { parseAccentHex(hex) }
+        AlertDialog(
+            onDismissRequest = { isDialogOpen = false },
+            title = { Text("Accent Color Palette · HEX") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Acepta #RRGGBB o #AARRGGBB. La vista previa cambia al escribir.", style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(
+                        value = hex,
+                        onValueChange = { value -> if (value.length <= 9) hex = value },
+                        label = { Text("Color HEX") },
+                        placeholder = { Text("#FF00AA") },
+                        singleLine = true,
+                        isError = hex.isNotBlank() && parsed == null,
+                        leadingIcon = {
+                            Box(
+                                Modifier
+                                    .size(20.dp)
+                                    .clip(CircleShape)
+                                    .background(parsed ?: MaterialTheme.colorScheme.surfaceVariant)
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                            )
+                        },
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = parsed ?: MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text = "Vista previa del acento",
+                            color = parsed?.let { if (android.graphics.Color.luminance(it.toArgb()) > 0.5f) Color.Black else Color.White }
+                                ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(14.dp),
+                        )
+                    }
+                    if (hex.isNotBlank() && parsed == null) {
+                        Text("Código no válido. Usa 6 u 8 dígitos hexadecimales.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (customColor != null) {
+                        TextButton(onClick = { onColorChange(null); isDialogOpen = false }) {
+                            Text("Usar paleta seleccionada")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { parsed?.let(onColorChange); isDialogOpen = false }, enabled = parsed != null) {
+                    Text("Aplicar")
+                }
+            },
+            dismissButton = { TextButton(onClick = { isDialogOpen = false }) { Text("Cancelar") } },
+        )
+    }
+}
+
+private fun parseAccentHex(raw: String): Color? {
+    val value = raw.trim().removePrefix("#")
+    if (!value.matches(Regex("(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})"))) return null
+    return runCatching { Color(android.graphics.Color.parseColor("#$value")) }.getOrNull()
+}
+
+private fun Color.toAccentHex(): String = "#%08X".format(android.graphics.Color.argb(
+    (alpha * 255).toInt(),
+    (red * 255).toInt(),
+    (green * 255).toInt(),
+    (blue * 255).toInt(),
+))

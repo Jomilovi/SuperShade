@@ -9,6 +9,7 @@ import android.hardware.camera2.CameraManager
 import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.wifi.WifiManager
 import android.nfc.NfcAdapter
 import android.os.Handler
@@ -62,6 +63,9 @@ class TileRepository(
     val tiles: StateFlow<List<TileDefinition>> = _tiles.asStateFlow()
 
     @Volatile private var torchEnabled = false
+    @Volatile private var cachedWifiSsid: String? = null
+    @Volatile private var cachedWifiConnected = false
+    @Volatile private var mobileDataCustomName: String = ""
 
     init {
         // Track torch state without polling so the flashlight tile stays accurate
@@ -97,7 +101,23 @@ class TileRepository(
             }
             val receiver = object : android.content.BroadcastReceiver() {
                 override fun onReceive(c: Context?, intent: android.content.Intent?) {
-                    scope.launch { updateActiveStates() }
+                    val action = intent?.action
+                    scope.launch {
+                        when (action) {
+                            WifiManager.WIFI_STATE_CHANGED_ACTION -> {
+                                val state = intent?.getIntExtra(WifiManager.EXTRA_WIFI_STATE, WifiManager.WIFI_STATE_UNKNOWN)
+                                if (state == WifiManager.WIFI_STATE_DISABLED || state == WifiManager.WIFI_STATE_DISABLING) {
+                                    cachedWifiSsid = null
+                                    cachedWifiConnected = false
+                                } else {
+                                    refreshWifiSnapshot(clearWhenDisconnected = false)
+                                }
+                            }
+                            WifiManager.NETWORK_STATE_CHANGED_ACTION ->
+                                refreshWifiSnapshot(clearWhenDisconnected = true)
+                        }
+                        updateActiveStates()
+                    }
                 }
             }
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -106,6 +126,8 @@ class TileRepository(
                 context.registerReceiver(receiver, filter)
             }
         } catch (e: Exception) {}
+
+        registerWifiNetworkCallback()
 
         try {
             context.contentResolver.registerContentObserver(
@@ -119,10 +141,20 @@ class TileRepository(
             )
         } catch (e: Exception) {}
 
-        scope.launch { loadTiles() }
+        scope.launch {
+            refreshWifiSnapshot(clearWhenDisconnected = false)
+            loadTiles()
+        }
 
         settings?.enabledTiles
             ?.onEach { loadTiles() }
+            ?.launchIn(scope)
+
+        settings?.mobileDataCustomName
+            ?.onEach { name ->
+                mobileDataCustomName = name.trim()
+                updateActiveStates()
+            }
             ?.launchIn(scope)
 
         governor.isCommanderConnected
@@ -277,7 +309,7 @@ class TileRepository(
                     val appContext = context.applicationContext
                     val wm = appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
                     if (wm?.isWifiEnabled != true) "Apagado"
-                    else if (isWifiConnected()) "Encendido"
+                    else if (isWifiConnected() || cachedWifiConnected) "Conectado"
                     else "Encendido · Sin conexión"
                 }
                 key.contains("bt") || key.contains("bluetooth") -> {
@@ -354,13 +386,22 @@ class TileRepository(
             key.contains("wifi") || key.contains("internet") -> {
                 val staticLabel = KNOWN_TILES[canonicalTileId(id)]?.first
                     ?: humanizeTileLabel(canonicalTileId(id))
-                if (!queryTileActiveState(id) || !isWifiConnected()) {
+                val connected = isWifiConnected() || cachedWifiConnected
+                if (!queryTileActiveState(id) || !connected) {
                     staticLabel
                 } else {
                     val appContext = context.applicationContext
-                    appContext.connectedWifiSsid()
-                        ?: "Connected Wi-Fi"
+                    val currentSsid = appContext.connectedWifiSsid()
+                    if (currentSsid != null) {
+                        cachedWifiSsid = currentSsid
+                        cachedWifiConnected = true
+                    }
+                    cachedWifiSsid ?: staticLabel
                 }
+            }
+            canonicalTileId(id) == "cell" || key.contains("cellular") || key.contains("mobile") || key == "data" -> {
+                val staticLabel = KNOWN_TILES[canonicalTileId(id)]?.first ?: fallback
+                if (queryTileActiveState(id) && mobileDataCustomName.isNotBlank()) mobileDataCustomName else staticLabel
             }
             key.contains("bt") || key.contains("bluetooth") -> {
                 if (queryTileActiveState(id)) queryBluetoothConnectedDeviceName() ?: fallback else fallback
@@ -383,6 +424,62 @@ class TileRepository(
             wifiManager?.connectionInfo?.supplicantState == android.net.wifi.SupplicantState.COMPLETED
         }
     } catch (_: Exception) { false }
+
+    private fun refreshWifiSnapshot(clearWhenDisconnected: Boolean) {
+        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        if (wifiManager?.isWifiEnabled != true) {
+            cachedWifiSsid = null
+            cachedWifiConnected = false
+            return
+        }
+
+        val connected = isWifiConnected()
+        val currentSsid = if (connected) context.applicationContext.connectedWifiSsid() else null
+        if (connected && currentSsid != null) {
+            cachedWifiSsid = currentSsid
+            cachedWifiConnected = true
+            return
+        }
+
+        if (connected) {
+            // SSID may be temporarily hidden while Android refreshes capabilities/permissions.
+            cachedWifiConnected = true
+        } else if (clearWhenDisconnected) {
+            cachedWifiConnected = false
+            cachedWifiSsid = null
+        }
+    }
+
+    private fun registerWifiNetworkCallback() {
+        try {
+            val connectivity = context.getSystemService(ConnectivityManager::class.java) ?: return
+            val request = NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .build()
+            connectivity.registerNetworkCallback(request, object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    scope.launch {
+                        refreshWifiSnapshot(clearWhenDisconnected = false)
+                        updateActiveStates()
+                    }
+                }
+
+                override fun onCapabilitiesChanged(network: android.net.Network, capabilities: NetworkCapabilities) {
+                    scope.launch {
+                        refreshWifiSnapshot(clearWhenDisconnected = false)
+                        updateActiveStates()
+                    }
+                }
+
+                override fun onLost(network: android.net.Network) {
+                    scope.launch {
+                        refreshWifiSnapshot(clearWhenDisconnected = true)
+                        updateActiveStates()
+                    }
+                }
+            })
+        } catch (_: Exception) {}
+    }
 
     private fun queryBluetoothConnectedDeviceName(): String? = try {
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager

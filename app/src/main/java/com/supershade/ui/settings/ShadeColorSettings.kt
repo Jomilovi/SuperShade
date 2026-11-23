@@ -44,6 +44,7 @@ fun ShadeColorSettings(
         ShadeColorTarget.PANEL_BACKGROUND to "Fondo general del panel",
         ShadeColorTarget.NOTIFICATION_BACKGROUND to "Fondo de tarjetas de notificación",
         ShadeColorTarget.ACTIVE_CONTROL to "Controles y botones activos",
+        ShadeColorTarget.ACTIVE_CONTROL_TEXT to "Texto de controles activos",
         ShadeColorTarget.GENERAL_TEXT to "Texto general",
         ShadeColorTarget.BRIGHTNESS_SLIDER to "Deslizador de brillo",
         ShadeColorTarget.NOTIFICATION_TEXT to "Texto de notificaciones",
@@ -54,6 +55,7 @@ fun ShadeColorSettings(
         ShadeColorTarget.PANEL_BACKGROUND -> colorScheme.background
         ShadeColorTarget.NOTIFICATION_BACKGROUND -> colorScheme.surfaceContainer
         ShadeColorTarget.ACTIVE_CONTROL -> colorScheme.primary
+        ShadeColorTarget.ACTIVE_CONTROL_TEXT -> colorScheme.onPrimary
         ShadeColorTarget.GENERAL_TEXT, ShadeColorTarget.NOTIFICATION_TEXT -> colorScheme.onSurface
         ShadeColorTarget.BRIGHTNESS_SLIDER -> colorScheme.primary
         ShadeColorTarget.DISMISS_ACTION_BACKGROUND -> Color(0xFFE53935)
@@ -92,7 +94,7 @@ fun ShadeColorSettings(
         var hex by remember(target, colors) {
             mutableStateOf((colors.colorFor(target) ?: defaultColor(target)).toHex())
         }
-        val parsed = remember(hex) { runCatching { Color(android.graphics.Color.parseColor(hex.trim().let { if (it.startsWith("#")) it else "#$it" })) }.getOrNull() }
+        val parsed = remember(hex) { parseShadeColorHex(hex) }
         val title = targets.first { it.first == target }.second
         AlertDialog(
             onDismissRequest = { editingTarget = null },
@@ -145,6 +147,12 @@ fun ShadeColorSettings(
 }
 
 private fun Color.toHex(): String = "#%08X".format(toArgbInt())
+
+private fun parseShadeColorHex(raw: String): Color? {
+    val value = raw.trim().removePrefix("#")
+    if (!value.matches(Regex("(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})"))) return null
+    return runCatching { Color(android.graphics.Color.parseColor("#$value")) }.getOrNull()
+}
 
 private fun Color.toArgbInt(): Int = android.graphics.Color.argb(
     (alpha * 255).toInt(),
