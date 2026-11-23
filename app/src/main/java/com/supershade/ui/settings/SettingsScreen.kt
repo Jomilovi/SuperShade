@@ -148,6 +148,7 @@ import com.supershade.ui.theme.ShadeColorCustomization
 import com.supershade.ui.theme.ShadeColorTarget
 import com.supershade.settings.ClassificationMode
 import com.supershade.settings.NotificationDensity
+import com.supershade.settings.NotificationTextSize
 import com.supershade.ui.theme.BackdropTheme
 import com.supershade.ui.theme.DarkThemeMode
 import com.supershade.ui.theme.ShadeTheme
@@ -182,6 +183,8 @@ fun SettingsScreen(
     backdropOpacity: Float = 0.78f,
     notificationDensity: NotificationDensity = NotificationDensity.BALANCED,
     onNotificationDensityChange: (NotificationDensity) -> Unit = {},
+    notificationTextSize: NotificationTextSize = NotificationTextSize.NORMAL,
+    onNotificationTextSizeChange: (NotificationTextSize) -> Unit = {},
     classificationMode: ClassificationMode = ClassificationMode.ONE_UI,
     onClassificationModeChange: (ClassificationMode) -> Unit = {},
     showCategoryBar: Boolean = true,
@@ -2933,6 +2936,37 @@ fun SettingsScreen(
                                 Text(
                                     text = density.label.substringBefore(" ("),
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column {
+                        Text(
+                            text = "Notification text size",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                        Text(
+                            text = "Scales notification titles and message text.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    val textSizes = NotificationTextSize.entries
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        textSizes.forEachIndexed { index, size ->
+                            SegmentedButton(
+                                selected = notificationTextSize == size,
+                                onClick = { onNotificationTextSizeChange(size) },
+                                shape = SegmentedButtonDefaults.itemShape(index, textSizes.size),
+                                icon = {},
+                            ) {
+                                Text(
+                                    text = size.label,
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
                                 )
                             }
                         }

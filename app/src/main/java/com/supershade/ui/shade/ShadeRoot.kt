@@ -95,6 +95,7 @@ import com.supershade.ui.theme.LocalCardBorderWidth
 import com.supershade.ui.theme.LocalShadeShapeScheme
 import com.supershade.ui.theme.LocalShadeTheme
 import com.supershade.ui.theme.LocalShadeColorCustomization
+import com.supershade.ui.theme.LocalNotificationTextScale
 import com.supershade.ui.theme.ShadeShapeScheme
 import com.supershade.ui.theme.getCardBorder
 import com.supershade.viewmodel.ShadePanel
@@ -346,6 +347,7 @@ fun ShadeRoot(
         LocalShadeShapeScheme provides shapeScheme,
         LocalBackdropTheme provides backdropTheme,
         LocalShadeColorCustomization provides state.shadeColors,
+        LocalNotificationTextScale provides state.notificationTextSize.scale,
     ) {
         themeWrapper {
             Box(modifier = Modifier.fillMaxSize()) {

@@ -8,6 +8,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -430,6 +431,11 @@ fun TileCard(
                 }.value
                 val baseSize = (baseFontSize * sizeScale).coerceIn(8.5f, 14f).sp
                 val rawLabel = tile.label.ifBlank { humanizeTileLabel(tile.id) }
+                val isWifiTile = tile.id.lowercase().let { it.contains("wifi") || it.contains("internet") }
+                val showWifiName = isWifiTile &&
+                    tile.isActive &&
+                    tile.subtitle.equals("Encendido", ignoreCase = true) &&
+                    !isEditing
                 val displayLabel = when {
                     tile.id.lowercase().contains("rotation") -> if (tile.isActive) "Auto rotate" else "Portrait"
                     tile.id.lowercase().contains("mute") || tile.id.lowercase().contains("sound") -> tile.subtitle ?: rawLabel
@@ -463,6 +469,7 @@ fun TileCard(
                 if (isPrimaryTile || isEditing) Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = formattedLabel,
+                        modifier = if (showWifiName) Modifier.basicMarquee() else Modifier,
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = if (theme is ShadeTheme.Nothing) FontWeight.SemiBold else FontWeight.Medium,
                             fontSize = titleFontSize,
@@ -471,9 +478,9 @@ fun TileCard(
                             letterSpacing = if (theme is ShadeTheme.Nothing) 0.8.sp else 0.sp,
                         ),
                         color = contentColor,
-                        maxLines = if (tileSize == TileSize.COMPACT || formattedSubtitle != null) 1 else 2,
-                        overflow = TextOverflow.Ellipsis,
-                        softWrap = true,
+                        maxLines = if (showWifiName || tileSize == TileSize.COMPACT || formattedSubtitle != null) 1 else 2,
+                        overflow = if (showWifiName) TextOverflow.Clip else TextOverflow.Ellipsis,
+                        softWrap = !showWifiName,
                     )
                     if (formattedSubtitle != null && tileSize != TileSize.COMPACT && !isEditing) {
                         Text(

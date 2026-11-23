@@ -47,6 +47,7 @@ fun ShadeColorSettings(
         ShadeColorTarget.GENERAL_TEXT to "Texto general",
         ShadeColorTarget.BRIGHTNESS_SLIDER to "Deslizador de brillo",
         ShadeColorTarget.NOTIFICATION_TEXT to "Texto de notificaciones",
+        ShadeColorTarget.DISMISS_ACTION_BACKGROUND to "Fondo de acción al descartar",
     )
     val colorScheme = MaterialTheme.colorScheme
     fun defaultColor(target: ShadeColorTarget): Color = when (target) {
@@ -55,6 +56,7 @@ fun ShadeColorSettings(
         ShadeColorTarget.ACTIVE_CONTROL -> colorScheme.primary
         ShadeColorTarget.GENERAL_TEXT, ShadeColorTarget.NOTIFICATION_TEXT -> colorScheme.onSurface
         ShadeColorTarget.BRIGHTNESS_SLIDER -> colorScheme.primary
+        ShadeColorTarget.DISMISS_ACTION_BACKGROUND -> Color(0xFFE53935)
     }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         targets.forEach { (target, label) ->

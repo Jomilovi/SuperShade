@@ -12,6 +12,7 @@ enum class ShadeColorTarget {
     GENERAL_TEXT,
     BRIGHTNESS_SLIDER,
     NOTIFICATION_TEXT,
+    DISMISS_ACTION_BACKGROUND,
 }
 
 data class ShadeColorCustomization(
@@ -21,6 +22,7 @@ data class ShadeColorCustomization(
     val generalText: Color? = null,
     val brightnessSlider: Color? = null,
     val notificationText: Color? = null,
+    val dismissActionBackground: Color? = null,
 ) {
     fun colorFor(target: ShadeColorTarget): Color? = when (target) {
         ShadeColorTarget.PANEL_BACKGROUND -> panelBackground
@@ -29,6 +31,7 @@ data class ShadeColorCustomization(
         ShadeColorTarget.GENERAL_TEXT -> generalText
         ShadeColorTarget.BRIGHTNESS_SLIDER -> brightnessSlider
         ShadeColorTarget.NOTIFICATION_TEXT -> notificationText
+        ShadeColorTarget.DISMISS_ACTION_BACKGROUND -> dismissActionBackground
     }
 
     fun withColor(target: ShadeColorTarget, color: Color?): ShadeColorCustomization = when (target) {
@@ -38,6 +41,7 @@ data class ShadeColorCustomization(
         ShadeColorTarget.GENERAL_TEXT -> copy(generalText = color)
         ShadeColorTarget.BRIGHTNESS_SLIDER -> copy(brightnessSlider = color)
         ShadeColorTarget.NOTIFICATION_TEXT -> copy(notificationText = color)
+        ShadeColorTarget.DISMISS_ACTION_BACKGROUND -> copy(dismissActionBackground = color)
     }
 }
 

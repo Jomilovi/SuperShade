@@ -238,6 +238,10 @@ class ShadeViewModel(
             .onEach { density -> _state.update { it.copy(notificationDensity = density) } }
             .launchIn(viewModelScope)
 
+        settings.notificationTextSize
+            .onEach { size -> _state.update { it.copy(notificationTextSize = size) } }
+            .launchIn(viewModelScope)
+
         settings.deviceControlMode
             .onEach { mode -> _state.update { it.copy(deviceControlMode = mode) } }
             .launchIn(viewModelScope)
@@ -368,7 +372,7 @@ class ShadeViewModel(
             currentTiles.add(toIndex, moved)
             _state.update { it.copy(tiles = currentTiles) }
             viewModelScope.launch {
-                settings.setEnabledTiles(currentTiles.map { it.id })
+                settings.setEnabledTiles(currentTiles.map { canonicalTileId(it.id) })
             }
         }
     }

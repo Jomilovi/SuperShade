@@ -85,6 +85,7 @@ data class ShadeState(
     val backdropTheme: com.supershade.ui.theme.BackdropTheme = com.supershade.ui.theme.BackdropTheme.FROSTED_GLASS,
     val backdropOpacity: Float = 0.78f,
     val notificationDensity: com.supershade.settings.NotificationDensity = com.supershade.settings.NotificationDensity.BALANCED,
+    val notificationTextSize: com.supershade.settings.NotificationTextSize = com.supershade.settings.NotificationTextSize.NORMAL,
     val hiddenChannels: Set<String> = emptySet(),
     val hideOngoingNotifications: Boolean = false,
     val deviceControlMode: com.supershade.settings.DeviceControlMode = com.supershade.settings.DeviceControlMode.SHOW_WHEN_EXPANDED,

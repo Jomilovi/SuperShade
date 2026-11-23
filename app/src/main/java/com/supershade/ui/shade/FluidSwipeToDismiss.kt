@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -25,9 +26,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.supershade.haptics.LocalSuperHaptics
 import com.supershade.haptics.SuperHaptics
+import com.supershade.ui.theme.LocalNotificationTextScale
+import com.supershade.ui.theme.LocalNotificationTextScaleApplied
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -86,6 +90,11 @@ fun FluidSwipeToDismiss(
     val context = LocalContext.current
     val haptics: SuperHaptics = LocalSuperHaptics.current ?: remember(context) { SuperHaptics(context) }
     val density = LocalDensity.current
+    val notificationTextScale = LocalNotificationTextScale.current
+    val notificationTextScaleAlreadyApplied = LocalNotificationTextScaleApplied.current
+    val scaledNotificationDensity = remember(density, notificationTextScale) {
+        Density(density.density, density.fontScale * notificationTextScale)
+    }
     val flingVelocityPx = with(density) { 900.dp.toPx() }
     val currentOnDismissed by rememberUpdatedState(onDismissed)
     val allowStart by rememberUpdatedState(enableStartToEnd)
@@ -159,6 +168,17 @@ fun FluidSwipeToDismiss(
                         }
                     },
                 ),
-        ) { content() }
+        ) {
+            if (notificationTextScaleAlreadyApplied) {
+                content()
+            } else {
+                CompositionLocalProvider(
+                    LocalDensity provides scaledNotificationDensity,
+                    LocalNotificationTextScaleApplied provides true,
+                ) {
+                    content()
+                }
+            }
+        }
     }
 }

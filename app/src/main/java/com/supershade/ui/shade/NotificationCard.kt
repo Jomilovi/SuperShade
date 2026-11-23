@@ -134,6 +134,7 @@ fun NotificationCard(
     val haptics = LocalSuperHaptics.current ?: remember(context) { com.supershade.haptics.SuperHaptics(context) }
     val shadeTheme = LocalShadeTheme.current
     val notificationTextColor = LocalShadeColorCustomization.current.notificationText
+    val dismissActionBackground = LocalShadeColorCustomization.current.dismissActionBackground
     val isAmoled = LocalShadeAmoledMode.current
     var expanded by remember { mutableStateOf(false) }
     var replyingAction by remember { mutableStateOf<NotificationAction?>(null) }
@@ -215,16 +216,18 @@ fun NotificationCard(
                 animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
                 label = "swipeIconRotation",
             )
-            val trackBgColor = when (shadeTheme) {
-                is ShadeTheme.Cyberpunk -> Color(0xFFFF0055).copy(alpha = (progress * 0.40f).coerceIn(0f, 0.35f))
-                is ShadeTheme.Nothing -> Color(0xFFD71920).copy(alpha = (progress * 0.45f).coerceIn(0f, 0.40f))
-                else -> Color(0xFFE53935).copy(alpha = (progress * 0.45f).coerceIn(0f, 0.40f))
+            val defaultDismissColor = when (shadeTheme) {
+                is ShadeTheme.Cyberpunk -> Color(0xFFFF0055)
+                is ShadeTheme.Nothing -> Color(0xFFD71920)
+                else -> Color(0xFFE53935)
             }
-            val badgeColor = when (shadeTheme) {
-                is ShadeTheme.Cyberpunk -> if (isPastDismissThreshold) Color(0xFFFF0055) else Color(0xFFFF0055).copy(alpha = 0.85f)
-                is ShadeTheme.Nothing -> if (isPastDismissThreshold) Color(0xFFD71920) else Color(0xFFD71920).copy(alpha = 0.85f)
-                else -> if (isPastDismissThreshold) Color(0xFFE53935) else Color(0xFFE53935).copy(alpha = 0.85f)
+            val dismissActionColor = dismissActionBackground ?: defaultDismissColor
+            val trackAlpha = when (shadeTheme) {
+                is ShadeTheme.Cyberpunk -> (progress * 0.40f).coerceIn(0f, 0.35f)
+                else -> (progress * 0.45f).coerceIn(0f, 0.40f)
             }
+            val trackBgColor = dismissActionColor.copy(alpha = trackAlpha)
+            val badgeColor = dismissActionColor.copy(alpha = if (isPastDismissThreshold) 1f else 0.85f)
             val badgeShape = when (shadeTheme) {
                 is ShadeTheme.Cyberpunk -> ChamferedCornerShape(6.dp)
                 is ShadeTheme.Nothing -> RoundedCornerShape(8.dp)

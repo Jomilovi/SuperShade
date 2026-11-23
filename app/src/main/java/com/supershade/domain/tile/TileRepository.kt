@@ -277,7 +277,7 @@ class TileRepository(
                     val appContext = context.applicationContext
                     val wm = appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
                     if (wm?.isWifiEnabled != true) "Apagado"
-                    else if (appContext.connectedWifiSsid() != null || isWifiConnected()) "Encendido"
+                    else if (isWifiConnected()) "Encendido"
                     else "Encendido · Sin conexión"
                 }
                 key.contains("bt") || key.contains("bluetooth") -> {
@@ -352,7 +352,15 @@ class TileRepository(
         val key = id.lowercase()
         return when {
             key.contains("wifi") || key.contains("internet") -> {
-                if (queryTileActiveState(id)) context.applicationContext.connectedWifiSsid() ?: fallback else fallback
+                val staticLabel = KNOWN_TILES[canonicalTileId(id)]?.first
+                    ?: humanizeTileLabel(canonicalTileId(id))
+                if (!queryTileActiveState(id) || !isWifiConnected()) {
+                    staticLabel
+                } else {
+                    val appContext = context.applicationContext
+                    appContext.connectedWifiSsid()
+                        ?: "Connected Wi-Fi"
+                }
             }
             key.contains("bt") || key.contains("bluetooth") -> {
                 if (queryTileActiveState(id)) queryBluetoothConnectedDeviceName() ?: fallback else fallback
@@ -362,9 +370,18 @@ class TileRepository(
     }
 
     private fun isWifiConnected(): Boolean = try {
-        val connectivity = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-        val activeNetwork = connectivity.activeNetwork ?: return false
-        connectivity.getNetworkCapabilities(activeNetwork)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        val connectivity = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val activeNetwork = connectivity?.activeNetwork
+        val activeNetworkUsesWifi = activeNetwork != null &&
+            connectivity?.getNetworkCapabilities(activeNetwork)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        if (activeNetworkUsesWifi) {
+            true
+        } else {
+            @Suppress("DEPRECATION")
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            @Suppress("DEPRECATION")
+            wifiManager?.connectionInfo?.supplicantState == android.net.wifi.SupplicantState.COMPLETED
+        }
     } catch (_: Exception) { false }
 
     private fun queryBluetoothConnectedDeviceName(): String? = try {

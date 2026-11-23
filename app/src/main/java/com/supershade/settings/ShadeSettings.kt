@@ -75,6 +75,13 @@ enum class TileGridColumns(val id: String, val label: String, val count: Int) {
     COMPACT("compact", "Compact (5)", 5);
 }
 
+enum class NotificationTextSize(val id: String, val label: String, val scale: Float) {
+    SMALL("small", "Pequeño", 0.90f),
+    NORMAL("normal", "Normal", 1.00f),
+    LARGE("large", "Grande", 1.15f),
+    EXTRA_LARGE("extra_large", "Extra grande", 1.30f),
+}
+
 enum class NotificationDensity(
     val id: String,
     val label: String,
@@ -278,6 +285,8 @@ class ShadeSettings(private val context: Context) {
         private val GENERAL_TEXT_COLOR_KEY = longPreferencesKey("general_text_color")
         private val BRIGHTNESS_SLIDER_COLOR_KEY = longPreferencesKey("brightness_slider_color")
         private val NOTIFICATION_TEXT_COLOR_KEY = longPreferencesKey("notification_text_color")
+        private val DISMISS_ACTION_BACKGROUND_COLOR_KEY = longPreferencesKey("dismiss_action_background_color")
+        private val NOTIFICATION_TEXT_SIZE_KEY = stringPreferencesKey("notification_text_size")
     }
 
     val backdropTheme: Flow<BackdropTheme> = context.dataStore.data.map { prefs ->
@@ -313,6 +322,11 @@ class ShadeSettings(private val context: Context) {
         }
     }
 
+    val notificationTextSize: Flow<NotificationTextSize> = context.dataStore.data.map { prefs ->
+        NotificationTextSize.entries.firstOrNull { it.id == prefs[NOTIFICATION_TEXT_SIZE_KEY] }
+            ?: NotificationTextSize.NORMAL
+    }
+
     val darkThemeMode: Flow<com.supershade.ui.theme.DarkThemeMode> = context.dataStore.data.map { prefs ->
         when (prefs[DARK_MODE_KEY]) {
             "dark" -> com.supershade.ui.theme.DarkThemeMode.DARK
@@ -343,6 +357,7 @@ class ShadeSettings(private val context: Context) {
             generalText = color(GENERAL_TEXT_COLOR_KEY),
             brightnessSlider = color(BRIGHTNESS_SLIDER_COLOR_KEY),
             notificationText = color(NOTIFICATION_TEXT_COLOR_KEY),
+            dismissActionBackground = color(DISMISS_ACTION_BACKGROUND_COLOR_KEY),
         )
     }
 
@@ -467,6 +482,12 @@ class ShadeSettings(private val context: Context) {
         }
     }
 
+    suspend fun setNotificationTextSize(size: NotificationTextSize) {
+        context.dataStore.edit { prefs ->
+            prefs[NOTIFICATION_TEXT_SIZE_KEY] = size.id
+        }
+    }
+
     suspend fun setDarkThemeMode(mode: com.supershade.ui.theme.DarkThemeMode) {
         context.dataStore.edit { prefs ->
             prefs[DARK_MODE_KEY] = when (mode) {
@@ -499,6 +520,7 @@ class ShadeSettings(private val context: Context) {
             ShadeColorTarget.GENERAL_TEXT -> GENERAL_TEXT_COLOR_KEY
             ShadeColorTarget.BRIGHTNESS_SLIDER -> BRIGHTNESS_SLIDER_COLOR_KEY
             ShadeColorTarget.NOTIFICATION_TEXT -> NOTIFICATION_TEXT_COLOR_KEY
+            ShadeColorTarget.DISMISS_ACTION_BACKGROUND -> DISMISS_ACTION_BACKGROUND_COLOR_KEY
         }
         context.dataStore.edit { prefs ->
             if (color == null) prefs.remove(key) else prefs[key] = color.value.toLong()

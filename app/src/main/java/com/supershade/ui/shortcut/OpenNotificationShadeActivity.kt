@@ -16,6 +16,18 @@ import com.supershade.service.SuperShadeAccessibilityService
 class OpenNotificationShadeActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (intent?.action == Intent.ACTION_CREATE_SHORTCUT) {
+            val resultIntent = ShortcutResultIntent.create(
+                activity = this,
+                target = OpenNotificationShadeActivity::class.java,
+                name = "SuperShade Notifications",
+                iconResourceId = com.supershade.R.drawable.ic_notification_shade,
+            )
+            setResult(Activity.RESULT_OK, resultIntent)
+            finish()
+            overridePendingTransition(0, 0)
+            return
+        }
         val a11y = SuperShadeAccessibilityService.instance
         if (a11y != null) {
             a11y.openSuperShadeFromReceiver(expandQs = false)

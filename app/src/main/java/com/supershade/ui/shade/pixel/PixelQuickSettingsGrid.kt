@@ -3,8 +3,7 @@ package com.supershade.ui.shade.pixel
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -319,45 +318,29 @@ private fun DraggablePixelTileGrid(
                 gridCoordinates = coords
             }
             .pointerInput(tiles.size) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    val downPos = down.position
-
-                    val pressedIndex = tileRects.entries.firstOrNull { (_, rect) ->
-                        rect.contains(downPos)
-                    }?.key ?: return@awaitEachGesture
-
-                    var isLongPress = false
-                    var elapsedMs = 0L
-                    val longPressMs = viewConfiguration.longPressTimeoutMillis
-
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
-
-                        elapsedMs += 16L
-                        if (!change.pressed) break
-
-                        if (!isLongPress && elapsedMs >= longPressMs) {
-                            isLongPress = true
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { downPosition ->
+                        val pressedIndex = tileRects.entries.firstOrNull { (_, rect) ->
+                            rect.contains(downPosition)
+                        }?.key ?: -1
+                        if (pressedIndex >= 0) {
                             dragIndex = pressedIndex
                             targetIndex = pressedIndex
-                            dragX = change.position.x
-                            dragY = change.position.y
+                            dragX = downPosition.x
+                            dragY = downPosition.y
+                            lastTargetRef.intValue = pressedIndex
                             haptics.tileGrab()
-                            change.consume()
                         }
-
-                        if (isLongPress) {
+                    },
+                    onDrag = { change, _ ->
+                        if (dragIndex >= 0) {
                             change.consume()
                             dragX = change.position.x
                             dragY = change.position.y
 
                             val hovered = tileRects.entries.minByOrNull { (_, rect) ->
-                                val cx = rect.center.x
-                                val cy = rect.center.y
-                                val dx = cx - change.position.x
-                                val dy = cy - change.position.y
+                                val dx = rect.center.x - change.position.x
+                                val dy = rect.center.y - change.position.y
                                 dx * dx + dy * dy
                             }?.key ?: -1
 
@@ -369,17 +352,24 @@ private fun DraggablePixelTileGrid(
                                 }
                             }
                         }
-                    }
-
-                    if (isLongPress) {
-                        haptics.tileDrop()
-                        if (dragIndex >= 0 && targetIndex >= 0 && dragIndex != targetIndex) {
-                            onMoveTile(dragIndex, targetIndex)
+                    },
+                    onDragEnd = {
+                        if (dragIndex >= 0) {
+                            haptics.tileDrop()
+                            if (targetIndex >= 0 && dragIndex != targetIndex) {
+                                onMoveTile(dragIndex, targetIndex)
+                            }
                         }
-                    }
-                    dragIndex = -1
-                    targetIndex = -1
-                }
+                        dragIndex = -1
+                        targetIndex = -1
+                        lastTargetRef.intValue = -1
+                    },
+                    onDragCancel = {
+                        dragIndex = -1
+                        targetIndex = -1
+                        lastTargetRef.intValue = -1
+                    },
+                )
             },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

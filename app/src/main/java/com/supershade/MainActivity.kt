@@ -79,6 +79,7 @@ class MainActivity : ComponentActivity() {
             val backdropTheme by settings.backdropTheme.collectAsState(initial = BackdropTheme.FROSTED_GLASS)
             val backdropOpacity by settings.backdropOpacity.collectAsState(initial = 0.78f)
             val notificationDensity by settings.notificationDensity.collectAsState(initial = com.supershade.settings.NotificationDensity.BALANCED)
+            val notificationTextSize by settings.notificationTextSize.collectAsState(initial = com.supershade.settings.NotificationTextSize.NORMAL)
             val isActive by settings.isActive.collectAsState(initial = false)
             val blockSystemShade by settings.blockSystemShade.collectAsState(initial = true)
             val tileShape by settings.tileShape.collectAsState(initial = com.supershade.settings.TileShape.SQUIRCLE)
@@ -211,6 +212,11 @@ class MainActivity : ComponentActivity() {
                         onNotificationDensityChange = { newDensity ->
                             superHaptics.sliderTick()
                             scope.launch { settings.setNotificationDensity(newDensity) }
+                        },
+                        notificationTextSize = notificationTextSize,
+                        onNotificationTextSizeChange = { newSize ->
+                            superHaptics.sliderTick()
+                            scope.launch { settings.setNotificationTextSize(newSize) }
                         },
                         classificationMode = classificationMode,
                         onClassificationModeChange = { mode ->

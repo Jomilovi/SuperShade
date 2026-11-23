@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -199,6 +200,10 @@ fun PixelTilePill(
         tile.id.lowercase().contains("mute") || tile.id.lowercase().contains("sound") -> tile.subtitle ?: tile.label
         else -> tile.label.ifBlank { com.supershade.domain.tile.humanizeTileLabel(tile.id) }
     }
+    val showWifiName = tile.isActive &&
+        tile.id.lowercase().let { it.contains("wifi") || it.contains("internet") } &&
+        tile.subtitle.equals("Encendido", ignoreCase = true) &&
+        !isEditing
     val subtitleText = when {
         tile.id.lowercase().contains("rotation") -> if (isActive) "On" else "Off"
         tile.id.lowercase().contains("mute") || tile.id.lowercase().contains("sound") -> if (isActive) "Active" else "Off"
@@ -329,6 +334,7 @@ fun PixelTilePill(
                 ) {
                     Text(
                         text = displayLabel,
+                        modifier = if (showWifiName) Modifier.basicMarquee() else Modifier,
                         style = MaterialTheme.typography.labelLarge.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = (14f * sizeScale).coerceIn(11f, 18f).sp,
@@ -336,7 +342,7 @@ fun PixelTilePill(
                         ),
                         color = onPillColor,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = if (showWifiName) TextOverflow.Clip else TextOverflow.Ellipsis,
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
