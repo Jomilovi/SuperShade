@@ -8,6 +8,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -155,7 +156,7 @@ fun OneUiShadeTheme(
         else -> OneUiLightColors
     }
 
-    val colorScheme = if (accentColor != com.supershade.settings.AccentColor.MONET) {
+    val colorScheme = (if (accentColor != com.supershade.settings.AccentColor.MONET) {
         val c = Color(accentColor.hex)
         base.copy(
             primary = c,
@@ -165,11 +166,13 @@ fun OneUiShadeTheme(
         )
     } else {
         monetScheme(base, isDark, if (isAmoled) 0f else 0.45f, monetBlendStrength)
-    }
+    }).withShadeCustomization(LocalShadeColorCustomization.current, isAmoled && isDark)
+    CompositionLocalProvider(LocalShadeAmoledMode provides (isAmoled && isDark)) {
     MaterialTheme(
         colorScheme = colorScheme,
         typography  = OneUiTypography,
         shapes      = OneUiShapes,
         content     = content,
     )
+    }
 }

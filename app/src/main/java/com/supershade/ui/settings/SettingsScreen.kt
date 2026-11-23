@@ -144,6 +144,8 @@ import androidx.compose.material3.OutlinedTextField
 import com.supershade.R
 import com.supershade.domain.notification.model.ShadeCategory
 import com.supershade.settings.AccentColor
+import com.supershade.ui.theme.ShadeColorCustomization
+import com.supershade.ui.theme.ShadeColorTarget
 import com.supershade.settings.ClassificationMode
 import com.supershade.settings.NotificationDensity
 import com.supershade.ui.theme.BackdropTheme
@@ -167,11 +169,15 @@ fun SettingsScreen(
     writeSettingsGranted: Boolean = false,
     accessibilityGranted: Boolean = false,
     wifiNetworkNamePermissionGranted: Boolean = false,
+    bluetoothConnectPermissionGranted: Boolean = false,
     onRequestWifiNetworkNamePermission: () -> Unit = {},
+    onRequestBluetoothConnectPermission: () -> Unit = {},
     shadeActive: Boolean,
     blockSystemShade: Boolean = true,
     selectedTheme: ShadeTheme,
     selectedAccentColor: AccentColor = AccentColor.GALAXY_BLUE,
+    shadeColors: ShadeColorCustomization = ShadeColorCustomization(),
+    onShadeColorChange: (ShadeColorTarget, Color?) -> Unit = { _, _ -> },
     backdropTheme: BackdropTheme = BackdropTheme.FROSTED_GLASS,
     backdropOpacity: Float = 0.78f,
     notificationDensity: NotificationDensity = NotificationDensity.BALANCED,
@@ -545,6 +551,18 @@ fun SettingsScreen(
                             isRecommended = true,
                             actionText = if (wifiNetworkNamePermissionGranted) "Active" else "Grant",
                             onClick = if (wifiNetworkNamePermissionGranted) null else onRequestWifiNetworkNamePermission,
+                        )
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f))
+
+                        PermissionRow(
+                            icon = Icons.Default.Bluetooth,
+                            title = "Bluetooth device name",
+                            subtitle = "Lets the Bluetooth button show the connected device",
+                            isGranted = bluetoothConnectPermissionGranted,
+                            isRecommended = true,
+                            actionText = if (bluetoothConnectPermissionGranted) "Active" else "Grant",
+                            onClick = if (bluetoothConnectPermissionGranted) null else onRequestBluetoothConnectPermission,
                         )
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f))
@@ -2489,6 +2507,16 @@ fun SettingsScreen(
                             )
                         }
                     }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f))
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Colores personalizados",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    )
+                    ShadeColorSettings(colors = shadeColors, onColorChange = onShadeColorChange)
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f))

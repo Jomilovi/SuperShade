@@ -76,6 +76,7 @@ import com.supershade.ui.shade.nothing.DotMatrixClockDisplay
 import com.supershade.ui.shade.nothing.NothingBatteryPill
 import com.supershade.ui.theme.LocalShadeShapeScheme
 import com.supershade.ui.theme.LocalShadeTheme
+import com.supershade.ui.theme.LocalShadeAmoledMode
 import com.supershade.ui.theme.ShadeTheme
 import com.supershade.ui.theme.ChamferedCornerShape
 import kotlin.math.roundToInt
@@ -84,12 +85,6 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
-private fun formatTime(): String =
-    SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
-
-private fun formatAMPM(): String =
-    SimpleDateFormat("a", Locale.getDefault()).format(Date())
 
 private fun formatDate(): String =
     SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(Date())
@@ -330,7 +325,7 @@ private fun CyberpunkBatteryTelemetry(
 
     Surface(
         shape = ChamferedCornerShape(4.dp),
-        color = Color(0xFF090D18),
+        color = if (LocalShadeAmoledMode.current) Color.Black else Color(0xFF090D18),
         border = BorderStroke(1.dp, Color(0xFF00F0FF).copy(alpha = 0.70f)),
         modifier = modifier,
     ) {
@@ -386,8 +381,7 @@ fun StatusBarRow(
     val shapes = LocalShadeShapeScheme.current
     val shadeTheme = LocalShadeTheme.current
 
-    var time by remember { mutableStateOf(SimpleDateFormat("h:mm", Locale.getDefault()).format(Date())) }
-    var ampm by remember { mutableStateOf(SimpleDateFormat("a", Locale.getDefault()).format(Date())) }
+    var time by remember { mutableStateOf(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())) }
     var date by remember { mutableStateOf(formatDate()) }
 
     // Battery state derived from statusBar with hardware fallback
@@ -423,8 +417,7 @@ fun StatusBarRow(
             val now = System.currentTimeMillis()
             val delayMs = (60_000L - (now % 60_000L)).coerceIn(100L, 60_000L)
             delay(delayMs)
-            time = SimpleDateFormat("h:mm", Locale.getDefault()).format(Date())
-            ampm = SimpleDateFormat("a", Locale.getDefault()).format(Date())
+            time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
             date = formatDate()
         }
     }
@@ -468,7 +461,7 @@ fun StatusBarRow(
                         role = Role.Button,
                     )
                     .semantics {
-                        contentDescription = "Clock: $time $ampm. Double tap anywhere on header to sleep"
+                        contentDescription = "Clock: $time. Double tap anywhere on header to sleep"
                     },
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -500,15 +493,6 @@ fun StatusBarRow(
                             else -> MaterialTheme.typography.displaySmall
                         },
                         color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Text(
-                        text = if (shadeTheme is ShadeTheme.Cyberpunk) "// $ampm" else ampm,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = if (shadeTheme is ShadeTheme.Cyberpunk) FontWeight.Bold else FontWeight.Light,
-                            fontFamily = if (shadeTheme is ShadeTheme.Cyberpunk) FontFamily.Monospace else null,
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(bottom = 6.dp),
                     )
                 }
             }

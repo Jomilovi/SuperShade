@@ -79,6 +79,7 @@ fun PixelTilePill(
     onLongClick: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null,
     isEditing: Boolean = false,
+    isPrimaryTile: Boolean = false,
     isDragging: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -87,6 +88,7 @@ fun PixelTilePill(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val isActive = tile.isActive
+    val appliedTileShape = if (isPrimaryTile) TileShape.ROUNDED_RECTANGLE else tileShape
 
     // 1. Reactive Outer Corner Radius Morphing (Android 16 M3E: 28dp pill -> 14dp expressive squircle)
     val outerCornerRadius by animateDpAsState(
@@ -152,7 +154,7 @@ fun PixelTilePill(
     val pillBgColor by animateColorAsState(
         targetValue = when {
             isEditing -> MaterialTheme.colorScheme.surfaceContainerHigh
-            isActive && tileShape.isOutlineStyle() -> MaterialTheme.colorScheme.surfaceContainerHigh
+            isActive && appliedTileShape.isOutlineStyle() -> MaterialTheme.colorScheme.surfaceContainerHigh
             isActive -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.surfaceContainerHigh
         },
@@ -163,7 +165,7 @@ fun PixelTilePill(
     val onPillColor by animateColorAsState(
         targetValue = when {
             isEditing -> MaterialTheme.colorScheme.onSurface
-            isActive && tileShape.isOutlineStyle() -> MaterialTheme.colorScheme.primary
+            isActive && appliedTileShape.isOutlineStyle() -> MaterialTheme.colorScheme.primary
             isActive -> MaterialTheme.colorScheme.onPrimary
             else -> MaterialTheme.colorScheme.onSurface
         },
@@ -203,18 +205,20 @@ fun PixelTilePill(
     }
     val isExpandable = tile.id in setOf("internet", "wifi", "bt", "bluetooth", "hotspot", "dnd", "mute", "sound", "volume")
 
-    val pillShape = if (tileShape == TileShape.SQUIRCLE) {
+    val pillShape = if (isPrimaryTile) {
+        RoundedCornerShape(18.dp)
+    } else if (tileShape == TileShape.SQUIRCLE) {
         RoundedCornerShape(outerCornerRadius)
     } else {
         ShadeShapeScheme.fromTileShape(tileShape).tile
     }
     val sizeScale = (tileHeightDp.toFloat() / TileSize.STANDARD.heightDp).coerceIn(0.72f, 1.38f)
     val tileBorder = when {
-        tileShape.isOutlineStyle() && tileShape != TileShape.CIRCLE_DASH -> androidx.compose.foundation.BorderStroke(
+        appliedTileShape.isOutlineStyle() && appliedTileShape != TileShape.CIRCLE_DASH -> androidx.compose.foundation.BorderStroke(
             if (isActive) 1.7.dp else 1.dp,
             if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
         )
-        tileShape == TileShape.CIRCLE_DASH -> androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        appliedTileShape == TileShape.CIRCLE_DASH -> androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         else -> getCardBorder(alpha = if (isActive) 0.12f else 0.30f)
     }
 
@@ -254,16 +258,18 @@ fun PixelTilePill(
                 )
                 .semantics {
                     role = Role.Switch
+                    contentDescription = tile.label.ifBlank { com.supershade.domain.tile.humanizeTileLabel(tile.id) }
                     stateDescription = if (isActive) "Active" else "Inactive"
                 },
         ) {
             Box(Modifier.fillMaxSize()) {
-            TileShapeDecoration(tileShape, isActive)
+            TileShapeDecoration(appliedTileShape, isActive)
             Row(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 10.dp * sizeScale.coerceIn(0.9f, 1.1f), vertical = 10.dp * sizeScale.coerceIn(0.9f, 1.1f)),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = if (isPrimaryTile || isEditing) Arrangement.Start else Arrangement.Center,
             ) {
                 // Morphing Squircle / Circle Icon Container
                 Box(
@@ -313,10 +319,10 @@ fun PixelTilePill(
                 }
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
+            if (isPrimaryTile || isEditing) Spacer(modifier = Modifier.width(10.dp))
 
                 // Title and Subtitle with Live Dot
-                Column(
+                if (isPrimaryTile || isEditing) Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center,
                 ) {
@@ -357,7 +363,7 @@ fun PixelTilePill(
                 }
 
                 // Trailing expander chevron for expandable tiles
-                if (isExpandable && !isEditing) {
+                if (isExpandable && !isEditing && (isPrimaryTile || isEditing)) {
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = null,

@@ -201,6 +201,7 @@ fun PixelQuickSettingsGrid(
                                 tile = tile,
                                 tileShape = tileShape,
                                 tileHeightDp = tileHeightDp,
+                                isPrimaryTile = tiles.indexOf(tile) in 0..3,
                                 onClick = { onTileClick(tile) },
                                 onLongClick = onTileLongClick?.let { cb -> { cb(tile) } },
                                 isEditing = false,
@@ -417,6 +418,7 @@ private fun DraggablePixelTileGrid(
                                 onClick = {},
                                 onLongClick = null,
                                 isEditing = true,
+                                isPrimaryTile = globalIndex in 0..3,
                                 isDragging = isDragging,
                                 onRemove = { onRemoveTile(tile.id) },
                             )
@@ -458,6 +460,7 @@ private fun DraggablePixelTileGrid(
                         onClick = {},
                         onLongClick = null,
                         isEditing = true,
+                        isPrimaryTile = dragIndex in 0..3,
                         isDragging = true,
                         onRemove = null,
                     )

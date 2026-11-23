@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -27,7 +28,11 @@ import androidx.compose.ui.unit.dp
 import com.supershade.haptics.LocalSuperHaptics
 import com.supershade.haptics.SuperHaptics
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sign
@@ -45,6 +50,8 @@ class FluidSwipeState internal constructor(
     internal val scope: CoroutineScope,
 ) {
     internal val offset = Animatable(0f)
+    internal val dragMutex = Mutex()
+    internal var settleJob: Job? = null
     internal var widthPx by mutableFloatStateOf(1f)
 
     /** Current horizontal translation in px (positive = to the right). */
@@ -82,6 +89,11 @@ fun FluidSwipeToDismiss(
     val currentOnDismissed by rememberUpdatedState(onDismissed)
     val allowStart by rememberUpdatedState(enableStartToEnd)
     val allowEnd by rememberUpdatedState(enableEndToStart)
+    var isAttached by remember { mutableStateOf(true) }
+    DisposableEffect(state) {
+        isAttached = true
+        onDispose { isAttached = false }
+    }
 
     LaunchedEffect(state) {
         snapshotFlow { abs(state.offset.value) > state.thresholdPx }
@@ -92,11 +104,16 @@ fun FluidSwipeToDismiss(
     fun allowed(dir: Float) = if (dir > 0f) allowStart else allowEnd
 
     val draggableState = rememberDraggableState { delta ->
-        val cur = state.offset.value
-        val dir = if (cur != 0f) sign(cur) else sign(delta)
-        // Rubber-band when the direction is disabled.
-        val effective = if (allowed(if (delta != 0f) sign(cur + delta) else dir)) delta else delta * 0.18f
-        state.scope.launch { state.offset.snapTo(cur + effective) }
+        state.settleJob?.cancel()
+        state.scope.launch {
+            state.dragMutex.withLock {
+                val cur = state.offset.value
+                val dir = if (cur != 0f) sign(cur) else sign(delta)
+                // Rubber-band when the direction is disabled.
+                val effective = if (allowed(if (delta != 0f) sign(cur + delta) else dir)) delta else delta * 0.18f
+                state.offset.snapTo(cur + effective)
+            }
+        }
     }
 
     Box(modifier = modifier) {
@@ -112,26 +129,32 @@ fun FluidSwipeToDismiss(
                     orientation = Orientation.Horizontal,
                     state = draggableState,
                     onDragStopped = { velocity ->
-                        val o = state.offset.value
-                        val dir = sign(o)
-                        val flung = abs(velocity) > flingVelocityPx && sign(velocity) == dir && abs(o) > 8f
-                        val commit = dir != 0f && allowed(dir) && (abs(o) > state.thresholdPx || flung)
-                        if (commit) {
-                            haptics.notificationDismissCommit()
-                            state.offset.animateTo(
-                                dir * state.widthPx * 1.2f,
-                                spring(Spring.DampingRatioNoBouncy, 420f),
-                                initialVelocity = velocity,
-                            )
-                            currentOnDismissed(dir > 0f)
-                            // If the item survives (e.g. dismissal rejected), glide back.
-                            state.offset.animateTo(0f, spring(0.8f, 300f))
-                        } else {
-                            state.offset.animateTo(
-                                0f,
-                                spring(0.62f, 450f),
-                                initialVelocity = velocity,
-                            )
+                        state.settleJob?.cancel()
+                        state.settleJob = state.scope.launch {
+                            state.dragMutex.withLock {
+                                val o = state.offset.value
+                                val dir = sign(o)
+                                val flung = abs(velocity) > flingVelocityPx && sign(velocity) == dir && abs(o) > 8f
+                                val commit = dir != 0f && allowed(dir) && (abs(o) > state.thresholdPx || flung)
+                                if (commit) {
+                                    haptics.notificationDismissCommit()
+                                    state.offset.animateTo(
+                                        dir * state.widthPx * 1.2f,
+                                        spring(Spring.DampingRatioNoBouncy, 420f),
+                                        initialVelocity = velocity,
+                                    )
+                                    currentOnDismissed(dir > 0f)
+                                    // A surviving row indicates a rejected/failed removal, so restore it.
+                                    delay(180L)
+                                    if (isAttached) state.offset.animateTo(0f, spring(0.8f, 300f))
+                                } else {
+                                    state.offset.animateTo(
+                                        0f,
+                                        spring(0.62f, 450f),
+                                        initialVelocity = velocity,
+                                    )
+                                }
+                            }
                         }
                     },
                 ),

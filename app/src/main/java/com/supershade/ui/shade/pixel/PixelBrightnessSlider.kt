@@ -48,6 +48,7 @@ import androidx.compose.animation.core.animateDpAsState
 import com.supershade.haptics.LocalSuperHaptics
 import com.supershade.haptics.SuperHaptics
 import com.supershade.ui.theme.M3ExpressiveMotion
+import com.supershade.ui.theme.LocalShadeColorCustomization
 import com.supershade.ui.theme.M3ExpressiveShapes
 import com.supershade.ui.theme.getCardBorder
 import com.supershade.ui.theme.rememberMorphShape
@@ -186,7 +187,7 @@ fun PixelBrightnessSlider(
                     .fillMaxHeight()
                     .fillMaxWidth(animatedFraction)
                     .clip(pillShape)
-                    .background(MaterialTheme.colorScheme.primary),
+                    .background(LocalShadeColorCustomization.current.brightnessSlider ?: MaterialTheme.colorScheme.primary),
             )
 
             // Content inside the track

@@ -90,15 +90,13 @@ fun PixelHeader(
     val context = LocalContext.current
     val haptics = LocalSuperHaptics.current ?: remember(context) { SuperHaptics(context) }
 
-    var timeText by remember { mutableStateOf(SimpleDateFormat("h:mm", Locale.getDefault()).format(Date())) }
-    var ampmText by remember { mutableStateOf(SimpleDateFormat("a", Locale.getDefault()).format(Date())) }
+    var timeText by remember { mutableStateOf(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())) }
     var dateText by remember { mutableStateOf(SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(Date())) }
 
     LaunchedEffect(Unit) {
         while (true) {
             val now = Date()
-            timeText = SimpleDateFormat("h:mm", Locale.getDefault()).format(now)
-            ampmText = SimpleDateFormat("a", Locale.getDefault()).format(now)
+            timeText = SimpleDateFormat("HH:mm", Locale.getDefault()).format(now)
             dateText = SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(now)
             delay(1000L)
         }
@@ -140,16 +138,6 @@ fun PixelHeader(
                         lineHeight = 40.sp,
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = ampmText.uppercase(Locale.getDefault()),
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        letterSpacing = 0.5.sp,
-                    ),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 4.dp),
                 )
             }
 

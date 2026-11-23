@@ -190,6 +190,10 @@ class ShadeViewModel(
             .onEach { a -> _state.update { it.copy(accentColor = a) } }
             .launchIn(viewModelScope)
 
+        settings.shadeColorCustomization
+            .onEach { colors -> _state.update { it.copy(shadeColors = colors) } }
+            .launchIn(viewModelScope)
+
         settings.tileShape
             .onEach { shape -> _state.update { it.copy(tileShape = shape) } }
             .launchIn(viewModelScope)

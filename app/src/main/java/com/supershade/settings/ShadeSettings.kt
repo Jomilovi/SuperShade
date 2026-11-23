@@ -10,8 +10,11 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.compose.ui.graphics.Color
 import com.supershade.domain.notification.model.ShadeCategory
 import com.supershade.ui.theme.BackdropTheme
+import com.supershade.ui.theme.ShadeColorCustomization
+import com.supershade.ui.theme.ShadeColorTarget
 import com.supershade.ui.theme.ShadeTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -269,6 +272,12 @@ class ShadeSettings(private val context: Context) {
         private val CLASSIFICATION_MODE_KEY = stringPreferencesKey("classification_mode")
         private val SHOW_CATEGORY_BAR_KEY = booleanPreferencesKey("show_category_bar")
         private val APP_CATEGORY_OVERRIDES_KEY = stringPreferencesKey("app_category_overrides")
+        private val PANEL_BACKGROUND_COLOR_KEY = longPreferencesKey("panel_background_color")
+        private val NOTIFICATION_BACKGROUND_COLOR_KEY = longPreferencesKey("notification_background_color")
+        private val ACTIVE_CONTROL_COLOR_KEY = longPreferencesKey("active_control_color")
+        private val GENERAL_TEXT_COLOR_KEY = longPreferencesKey("general_text_color")
+        private val BRIGHTNESS_SLIDER_COLOR_KEY = longPreferencesKey("brightness_slider_color")
+        private val NOTIFICATION_TEXT_COLOR_KEY = longPreferencesKey("notification_text_color")
     }
 
     val backdropTheme: Flow<BackdropTheme> = context.dataStore.data.map { prefs ->
@@ -322,6 +331,19 @@ class ShadeSettings(private val context: Context) {
             "monet" -> AccentColor.MONET
             else -> AccentColor.GALAXY_BLUE
         }
+    }
+
+    val shadeColorCustomization: Flow<ShadeColorCustomization> = context.dataStore.data.map { prefs ->
+        fun color(key: androidx.datastore.preferences.core.Preferences.Key<Long>): Color? =
+            prefs[key]?.let { Color(it.toULong()) }
+        ShadeColorCustomization(
+            panelBackground = color(PANEL_BACKGROUND_COLOR_KEY),
+            notificationBackground = color(NOTIFICATION_BACKGROUND_COLOR_KEY),
+            activeControl = color(ACTIVE_CONTROL_COLOR_KEY),
+            generalText = color(GENERAL_TEXT_COLOR_KEY),
+            brightnessSlider = color(BRIGHTNESS_SLIDER_COLOR_KEY),
+            notificationText = color(NOTIFICATION_TEXT_COLOR_KEY),
+        )
     }
 
     val isActive: Flow<Boolean> = context.dataStore.data.map { prefs ->
@@ -466,6 +488,20 @@ class ShadeSettings(private val context: Context) {
                 AccentColor.MONET -> "monet"
                 AccentColor.GALAXY_BLUE -> "galaxy_blue"
             }
+        }
+    }
+
+    suspend fun setShadeColor(target: ShadeColorTarget, color: Color?) {
+        val key = when (target) {
+            ShadeColorTarget.PANEL_BACKGROUND -> PANEL_BACKGROUND_COLOR_KEY
+            ShadeColorTarget.NOTIFICATION_BACKGROUND -> NOTIFICATION_BACKGROUND_COLOR_KEY
+            ShadeColorTarget.ACTIVE_CONTROL -> ACTIVE_CONTROL_COLOR_KEY
+            ShadeColorTarget.GENERAL_TEXT -> GENERAL_TEXT_COLOR_KEY
+            ShadeColorTarget.BRIGHTNESS_SLIDER -> BRIGHTNESS_SLIDER_COLOR_KEY
+            ShadeColorTarget.NOTIFICATION_TEXT -> NOTIFICATION_TEXT_COLOR_KEY
+        }
+        context.dataStore.edit { prefs ->
+            if (color == null) prefs.remove(key) else prefs[key] = color.value.toLong()
         }
     }
 

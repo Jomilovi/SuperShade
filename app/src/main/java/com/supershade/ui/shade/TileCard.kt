@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -137,6 +138,7 @@ fun TileCard(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     isEditing: Boolean = false,
+    isPrimaryTile: Boolean = false,
     /** Set to true when this card is being dragged (renders with lifted shadow/scale) */
     isDragging: Boolean = false,
     onRemove: (() -> Unit)? = null,
@@ -145,11 +147,12 @@ fun TileCard(
     val haptic = LocalHapticFeedback.current
     val haptics = LocalSuperHaptics.current ?: remember(context) { SuperHaptics(context) }
     val shapeScheme = com.supershade.ui.theme.LocalShadeShapeScheme.current
+    val appliedTileShape = if (isPrimaryTile) TileShape.ROUNDED_RECTANGLE else tileShape
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val baseCorner = when (tileShape) {
+    val baseCorner = when (appliedTileShape) {
         TileShape.SQUIRCLE -> 22.dp
         TileShape.ROUNDED -> 16.dp
         TileShape.PILL -> 28.dp
@@ -171,10 +174,11 @@ fun TileCard(
     )
 
     val cardShape = when {
-        tileShape == TileShape.SQUIRCLE && theme is ShadeTheme.Cyberpunk -> ChamferedCornerShape(if (isPressed) 5.dp else 8.dp)
-        tileShape == TileShape.SQUIRCLE && theme is ShadeTheme.Nothing -> RoundedCornerShape(if (isPressed) 12.dp else 16.dp)
+        isPrimaryTile -> RoundedCornerShape(18.dp)
+        appliedTileShape == TileShape.SQUIRCLE && theme is ShadeTheme.Cyberpunk -> ChamferedCornerShape(if (isPressed) 5.dp else 8.dp)
+        appliedTileShape == TileShape.SQUIRCLE && theme is ShadeTheme.Nothing -> RoundedCornerShape(if (isPressed) 12.dp else 16.dp)
         baseCorner != null -> RoundedCornerShape(dynamicCornerRadius)
-        else -> shapeScheme.tile
+        else -> if (appliedTileShape == tileShape) shapeScheme.tile else com.supershade.ui.theme.ShadeShapeScheme.fromTileShape(appliedTileShape).tile
     }
 
     // Scale: pressed shrink, dragging lift, otherwise 1f
@@ -215,7 +219,7 @@ fun TileCard(
 
     val containerColor by animateColorAsState(
         targetValue = when {
-            tile.isActive && tileShape.isOutlineStyle() -> MaterialTheme.colorScheme.surfaceContainerHigh
+            tile.isActive && appliedTileShape.isOutlineStyle() -> MaterialTheme.colorScheme.surfaceContainerHigh
             tile.isActive -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.surfaceContainerHigh
         },
@@ -224,7 +228,7 @@ fun TileCard(
     )
     val contentColor by animateColorAsState(
         targetValue = when {
-            tile.isActive && tileShape.isOutlineStyle() -> MaterialTheme.colorScheme.primary
+            tile.isActive && appliedTileShape.isOutlineStyle() -> MaterialTheme.colorScheme.primary
             tile.isActive -> MaterialTheme.colorScheme.onPrimary
             else -> MaterialTheme.colorScheme.onSurface
         },
@@ -234,11 +238,11 @@ fun TileCard(
 
     val indication = LocalIndication.current
     val borderStroke = when {
-        tileShape.isOutlineStyle() && tileShape != TileShape.CIRCLE_DASH -> BorderStroke(
+        appliedTileShape.isOutlineStyle() && appliedTileShape != TileShape.CIRCLE_DASH -> BorderStroke(
             if (tile.isActive) 1.7.dp else 1.dp,
             if (tile.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
         )
-        tileShape == TileShape.CIRCLE_DASH -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        appliedTileShape == TileShape.CIRCLE_DASH -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         theme is ShadeTheme.Cyberpunk -> BorderStroke(
             1.2.dp,
             if (tile.isActive) MaterialTheme.colorScheme.primary else Color(0xFF00F0FF).copy(alpha = 0.35f),
@@ -285,6 +289,7 @@ fun TileCard(
             }
             .semantics {
                 role = Role.Switch
+                contentDescription = tile.label.ifBlank { humanizeTileLabel(tile.id) }
                 stateDescription = stateDesc
                 tile.settingsAction?.let { action ->
                     customActions = listOf(
@@ -317,7 +322,7 @@ fun TileCard(
                 )
             }
 
-            TileShapeDecoration(tileShape, tile.isActive)
+            TileShapeDecoration(appliedTileShape, tile.isActive)
 
             // Click / long-press — disabled while editing (parent handles drag)
             val clickModifier = if (!isEditing) {
@@ -353,11 +358,11 @@ fun TileCard(
                     .fillMaxSize()
                     .then(clickModifier)
                     .padding(horizontal = horizPadding, vertical = vertPadding),
-                verticalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = if (isPrimaryTile || isEditing) Arrangement.SpaceBetween else Arrangement.Center,
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = if (isPrimaryTile || isEditing) Arrangement.SpaceBetween else Arrangement.Center,
                 ) {
                     val resolvedIcon = tileIcon(tile.id, tile.isActive, tile.subtitle)
                     if (resolvedIcon != Icons.Filled.Widgets) {
@@ -400,7 +405,7 @@ fun TileCard(
                             },
                     )
                 }
-                    if (activeDotScale > 0.05f) {
+                    if ((isPrimaryTile || isEditing) && activeDotScale > 0.05f) {
                         val dotColor = when (theme) {
                             is ShadeTheme.Nothing -> Color(0xFFD71920) // Nothing signature glyph red
                             is ShadeTheme.Cyberpunk -> MaterialTheme.colorScheme.secondary // Hot neon pink
@@ -455,7 +460,7 @@ fun TileCard(
                     formattedLabel.length > 13 -> (baseSize.value - 0.75f).sp
                     else -> baseSize
                 }
-                Column(modifier = Modifier.fillMaxWidth()) {
+                if (isPrimaryTile || isEditing) Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = formattedLabel,
                         style = MaterialTheme.typography.labelSmall.copy(

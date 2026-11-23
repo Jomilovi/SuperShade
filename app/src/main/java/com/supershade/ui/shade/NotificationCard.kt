@@ -109,7 +109,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.core.graphics.drawable.toBitmap
-import com.supershade.ui.theme.LocalShadeShapeScheme
+import com.supershade.ui.theme.notificationCardShape
+import com.supershade.ui.theme.notificationChipShape
+import com.supershade.ui.theme.LocalShadeColorCustomization
+import com.supershade.ui.theme.LocalShadeAmoledMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -129,8 +132,9 @@ fun NotificationCard(
 ) {
     val context = LocalContext.current
     val haptics = LocalSuperHaptics.current ?: remember(context) { com.supershade.haptics.SuperHaptics(context) }
-    val shapes = LocalShadeShapeScheme.current
     val shadeTheme = LocalShadeTheme.current
+    val notificationTextColor = LocalShadeColorCustomization.current.notificationText
+    val isAmoled = LocalShadeAmoledMode.current
     var expanded by remember { mutableStateOf(false) }
     var replyingAction by remember { mutableStateOf<NotificationAction?>(null) }
     var showSettingsMenu by remember { mutableStateOf(false) }
@@ -252,7 +256,7 @@ fun NotificationCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(shapes.card)
+                    .clip(notificationCardShape(shadeTheme))
                     .background(trackBgColor),
                 contentAlignment = alignment,
             ) {
@@ -329,7 +333,7 @@ fun NotificationCard(
             is ShadeTheme.Cyberpunk -> ChamferedCornerShape(10.dp)
             is ShadeTheme.Nothing -> RoundedCornerShape(16.dp)
             is ShadeTheme.Pixel -> RoundedCornerShape(26.dp)
-            else -> shapes.card
+            else -> notificationCardShape(shadeTheme)
         }
 
         val dynamicCardShape = if (isSwiping && dragProgress > 0.05f && baseThemeShape is RoundedCornerShape) {
@@ -346,7 +350,7 @@ fun NotificationCard(
             else -> getCardBorder(alpha = 0.25f)
         }
 
-        val cardBg = when (shadeTheme) {
+        val cardBg = if (isAmoled) Color.Black else LocalShadeColorCustomization.current.notificationBackground ?: when (shadeTheme) {
             is ShadeTheme.Cyberpunk -> Color(0xFF0A0E1A)
             is ShadeTheme.Nothing -> Color(0xFF0D0F12)
             else -> MaterialTheme.colorScheme.surfaceContainer
@@ -356,6 +360,7 @@ fun NotificationCard(
             shape = dynamicCardShape,
             colors = CardDefaults.cardColors(
                 containerColor = cardBg,
+                contentColor = notificationTextColor ?: MaterialTheme.colorScheme.onSurface,
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = cardElevation),
             border = cardBorder,
@@ -521,7 +526,7 @@ fun NotificationCard(
                                             fontWeight = FontWeight.SemiBold,
                                             fontFamily = if (shadeTheme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                                         ),
-                                    color = if (shadeTheme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = notificationTextColor ?: if (shadeTheme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -539,7 +544,7 @@ fun NotificationCard(
                                             fontFamily = if (shadeTheme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                                             fontSize = if (compact) 10.sp else 11.sp,
                                         ),
-                                        color = if (shadeTheme is ShadeTheme.Cyberpunk) Color(0xFFFF007F) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        color = (notificationTextColor ?: if (shadeTheme is ShadeTheme.Cyberpunk) Color(0xFFFF007F) else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.5f),
                                     )
                                 }
                                 Text(
@@ -548,7 +553,7 @@ fun NotificationCard(
                                         fontFamily = if (shadeTheme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                                         fontSize = if (compact) 10.sp else 11.sp,
                                     ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                                    color = (notificationTextColor ?: MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.75f),
                                 )
                                 if (notification.isOngoing) {
                                     Icon(
@@ -615,7 +620,7 @@ fun NotificationCard(
 
                             if (notification.isVipAlert) {
                                 Surface(
-                                    shape = shapes.chip,
+                                    shape = notificationChipShape(shadeTheme),
                                     color = when (shadeTheme) {
                                         is ShadeTheme.Cyberpunk -> Color(0xFFFF0055).copy(alpha = 0.20f)
                                         is ShadeTheme.Nothing -> Color(0xFFD71920).copy(alpha = 0.20f)
@@ -721,7 +726,7 @@ fun NotificationCard(
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 15.sp,
                                 ),
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = notificationTextColor ?: MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -730,7 +735,7 @@ fun NotificationCard(
                                 Text(
                                     text = displayText,
                                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = notificationTextColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = if (expanded) Int.MAX_VALUE else 3,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -749,7 +754,7 @@ fun NotificationCard(
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 13.5.sp,
                                         ),
-                                        color = MaterialTheme.colorScheme.onSurface,
+                                        color = notificationTextColor ?: MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.weight(1f, fill = false),
@@ -757,7 +762,7 @@ fun NotificationCard(
                                     Text(
                                         text = "— $displayText",
                                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                                        color = (notificationTextColor ?: MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.85f),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.weight(1f),
@@ -770,7 +775,7 @@ fun NotificationCard(
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 13.5.sp,
                                     ),
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = notificationTextColor ?: MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(top = 1.dp),
@@ -780,7 +785,7 @@ fun NotificationCard(
                                     Text(
                                         text = displayText,
                                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = notificationTextColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = Int.MAX_VALUE,
                                     )
                                 }
@@ -1061,7 +1066,7 @@ fun NotificationCard(
                                 is ShadeTheme.Nothing -> RoundedCornerShape(8.dp)
                                 is ShadeTheme.Pixel -> RoundedCornerShape(50)
                                 is ShadeTheme.OneUI -> RoundedCornerShape(14.dp)
-                                else -> shapes.chip
+                                else -> notificationChipShape(shadeTheme)
                             }
                             val actionBorder = when (shadeTheme) {
                                 is ShadeTheme.Cyberpunk -> BorderStroke(1.dp, Color(0xFF00F0FF).copy(alpha = 0.40f))
@@ -1206,7 +1211,7 @@ fun NotificationCard(
                                     shape = replyShape,
                                     textStyle = MaterialTheme.typography.bodySmall.copy(
                                         fontFamily = if (shadeTheme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
-                                        color = if (shadeTheme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurface,
+                                        color = notificationTextColor ?: if (shadeTheme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurface,
                                     ),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = when (shadeTheme) {
@@ -1458,7 +1463,7 @@ private fun ThemedNotificationProgressBar(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 11.sp,
                         ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = notificationTextColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -1471,9 +1476,9 @@ private fun relativeTime(postTime: Long): String {
     return when {
         delta < 60_000L    -> "now"
         delta < 3_600_000L -> "${delta / 60_000}m ago"
-        delta < 86_400_000L -> java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault())
+        delta < 86_400_000L -> java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
             .format(java.util.Date(postTime))
-        else -> java.text.SimpleDateFormat("EEE h:mm a", java.util.Locale.getDefault())
+        else -> java.text.SimpleDateFormat("EEE HH:mm", java.util.Locale.getDefault())
             .format(java.util.Date(postTime))
     }
 }

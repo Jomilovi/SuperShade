@@ -62,10 +62,12 @@ import com.supershade.domain.notification.model.ShadeNotification
 import com.supershade.haptics.LocalSuperHaptics
 import androidx.compose.material3.HorizontalDivider
 import com.supershade.domain.notification.model.ShadeCategory
-import com.supershade.ui.theme.LocalShadeShapeScheme
 import com.supershade.ui.theme.LocalShadeTheme
 import com.supershade.ui.theme.ShadeTheme
 import com.supershade.ui.theme.getCardBorder
+import com.supershade.ui.theme.notificationCardShape
+import com.supershade.ui.theme.notificationChipShape
+import com.supershade.ui.theme.LocalShadeAmoledMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
@@ -76,10 +78,10 @@ fun NotificationAccessCard(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val haptics = LocalSuperHaptics.current ?: remember(context) { com.supershade.haptics.SuperHaptics(context) }
-    val shapes = LocalShadeShapeScheme.current
+    val shadeTheme = LocalShadeTheme.current
 
     Surface(
-        shape = shapes.card,
+        shape = notificationCardShape(shadeTheme),
         color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.65f),
         border = getCardBorder(alpha = 0.35f),
         modifier = modifier
@@ -468,14 +470,13 @@ fun NotificationFeedSearchBar(
     modifier: Modifier = Modifier,
 ) {
     val haptics = LocalSuperHaptics.current
-    val shapes = LocalShadeShapeScheme.current
 
     val searchShape = when (theme) {
         is ShadeTheme.OneUI -> RoundedCornerShape(16.dp)
         is ShadeTheme.Pixel, is ShadeTheme.PureMaterial -> RoundedCornerShape(50)
         is ShadeTheme.Cyberpunk -> ChamferedCornerShape(8.dp)
         is ShadeTheme.Nothing -> RoundedCornerShape(8.dp)
-        else -> shapes.card
+        else -> notificationCardShape(theme)
     }
 
     val searchBorder = when (theme) {
@@ -485,7 +486,7 @@ fun NotificationFeedSearchBar(
         else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
     }
 
-    val containerColor = when (theme) {
+    val containerColor = if (LocalShadeAmoledMode.current) Color.Black else when (theme) {
         is ShadeTheme.Cyberpunk -> Color(0xFF0A0E1A).copy(alpha = 0.85f)
         is ShadeTheme.Nothing -> Color.Black.copy(alpha = 0.75f)
         else -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f)
@@ -609,7 +610,6 @@ fun EmptySearchResultView(
 ) {
     val haptics = LocalSuperHaptics.current
     val theme = LocalShadeTheme.current
-    val shapes = LocalShadeShapeScheme.current
 
     Column(
         modifier = modifier
@@ -653,7 +653,7 @@ fun EmptySearchResultView(
                 haptics?.sheetDetent()
                 onClearQuery()
             },
-            shape = shapes.chip,
+            shape = notificationChipShape(theme),
             color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f),
             border = getCardBorder(alpha = 0.25f),
             modifier = Modifier.padding(top = 4.dp),
@@ -1086,12 +1086,12 @@ private fun HeaderActionButton(
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
         label = "headerBtnScale",
     )
-    val shapes = LocalShadeShapeScheme.current
+    val shadeTheme = LocalShadeTheme.current
 
     Surface(
         onClick = onClick,
         interactionSource = interactionSource,
-        shape = shapes.chip,
+        shape = notificationChipShape(shadeTheme),
         color = if (isPrimary) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
         } else {

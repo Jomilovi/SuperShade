@@ -71,6 +71,7 @@ data class ShadeState(
     val brightness: Int = 128,
     val darkThemeMode: com.supershade.ui.theme.DarkThemeMode = com.supershade.ui.theme.DarkThemeMode.SYSTEM,
     val accentColor: com.supershade.settings.AccentColor = com.supershade.settings.AccentColor.GALAXY_BLUE,
+    val shadeColors: com.supershade.ui.theme.ShadeColorCustomization = com.supershade.ui.theme.ShadeColorCustomization(),
     val tileShape: com.supershade.settings.TileShape = com.supershade.settings.TileShape.SQUIRCLE,
     val tileSize: com.supershade.settings.TileSize = com.supershade.settings.TileSize.STANDARD,
     val tileHeightDp: Int = com.supershade.settings.TileSize.STANDARD.heightDp,

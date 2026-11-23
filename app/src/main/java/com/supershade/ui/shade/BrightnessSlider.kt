@@ -61,6 +61,7 @@ import com.supershade.haptics.SuperHaptics
 import com.supershade.ui.theme.ChamferedCornerShape
 import com.supershade.ui.theme.LocalShadeShapeScheme
 import com.supershade.ui.theme.LocalShadeTheme
+import com.supershade.ui.theme.LocalShadeColorCustomization
 import com.supershade.ui.theme.ShadeTheme
 import com.supershade.ui.theme.getCardBorder
 import androidx.compose.ui.text.font.FontFamily
@@ -195,9 +196,10 @@ fun BrightnessSlider(
     val shadeTheme = LocalShadeTheme.current
     val primaryColor = MaterialTheme.colorScheme.primary
     val secondaryColor = MaterialTheme.colorScheme.secondary
+    val customSliderColor = LocalShadeColorCustomization.current.brightnessSlider
 
-    val fillGradient = remember(shadeTheme, primaryColor, secondaryColor, isAuto) {
-        val baseColors = when (shadeTheme) {
+    val fillGradient = remember(shadeTheme, primaryColor, secondaryColor, isAuto, customSliderColor) {
+        val baseColors = customSliderColor?.let { listOf(it, it) } ?: when (shadeTheme) {
             is ShadeTheme.Cyberpunk -> listOf(primaryColor, secondaryColor)
             is ShadeTheme.Nothing -> listOf(primaryColor, primaryColor.copy(alpha = 0.85f))
             is ShadeTheme.Pixel, is ShadeTheme.PureMaterial -> listOf(primaryColor, primaryColor)

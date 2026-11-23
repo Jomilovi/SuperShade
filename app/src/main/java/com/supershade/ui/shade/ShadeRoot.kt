@@ -94,6 +94,7 @@ import com.supershade.ui.theme.LocalBackdropTheme
 import com.supershade.ui.theme.LocalCardBorderWidth
 import com.supershade.ui.theme.LocalShadeShapeScheme
 import com.supershade.ui.theme.LocalShadeTheme
+import com.supershade.ui.theme.LocalShadeColorCustomization
 import com.supershade.ui.theme.ShadeShapeScheme
 import com.supershade.ui.theme.getCardBorder
 import com.supershade.viewmodel.ShadePanel
@@ -344,6 +345,7 @@ fun ShadeRoot(
         LocalCardBorderWidth provides state.cardBorderWidth,
         LocalShadeShapeScheme provides shapeScheme,
         LocalBackdropTheme provides backdropTheme,
+        LocalShadeColorCustomization provides state.shadeColors,
     ) {
         themeWrapper {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -388,7 +390,7 @@ fun ShadeRoot(
                         opacity >= 0.99f -> {
                             if (isAmoled) Color(0xFF000000) else MaterialTheme.colorScheme.surface
                         }
-                        isAmoled -> Color(0xFF05070A).copy(alpha = opacity)
+                        isAmoled -> Color.Black
                         else -> MaterialTheme.colorScheme.surface.copy(alpha = opacity)
                     }
                     val isTogether = state.splitGestureMode.isTogether

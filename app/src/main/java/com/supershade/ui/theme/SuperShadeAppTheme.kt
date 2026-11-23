@@ -8,6 +8,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
@@ -105,7 +106,7 @@ fun SuperShadeAppTheme(
         else -> LightColors
     }
 
-    val colorScheme = if (accentColor != com.supershade.settings.AccentColor.MONET) {
+    val colorScheme = (if (accentColor != com.supershade.settings.AccentColor.MONET) {
         val c = Color(accentColor.hex)
         baseScheme.copy(
             primary = c,
@@ -113,10 +114,20 @@ fun SuperShadeAppTheme(
         )
     } else {
         baseScheme
-    }
+    }).withShadeCustomization(
+        LocalShadeColorCustomization.current.copy(
+            panelBackground = null,
+            notificationBackground = null,
+            brightnessSlider = null,
+            notificationText = null,
+        ),
+        mode == DarkThemeMode.AMOLED,
+    )
 
+    CompositionLocalProvider(LocalShadeAmoledMode provides (mode == DarkThemeMode.AMOLED)) {
     MaterialTheme(
         colorScheme = colorScheme,
         content = content,
     )
+    }
 }

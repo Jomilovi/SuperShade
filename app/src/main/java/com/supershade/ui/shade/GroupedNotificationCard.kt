@@ -34,8 +34,10 @@ import com.supershade.ui.theme.LocalShadeTheme
 import com.supershade.ui.theme.ShadeTheme
 import com.supershade.ui.theme.ChamferedCornerShape
 import androidx.compose.ui.text.font.FontWeight
-import com.supershade.ui.theme.LocalShadeShapeScheme
 import com.supershade.ui.theme.getCardBorder
+import com.supershade.ui.theme.notificationCardShape
+import com.supershade.ui.theme.LocalShadeColorCustomization
+import com.supershade.ui.theme.LocalShadeAmoledMode
 import androidx.compose.ui.graphics.graphicsLayer
 import android.content.Intent
 import android.provider.Settings
@@ -119,8 +121,9 @@ fun GroupedNotificationCard(
     onReply: (ShadeNotification, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
-    val shapes = LocalShadeShapeScheme.current
     val shadeTheme = LocalShadeTheme.current
+    val notificationTextColor = LocalShadeColorCustomization.current.notificationText
+    val isAmoled = LocalShadeAmoledMode.current
     var expanded by remember { mutableStateOf(false) }
     var showSettingsMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -209,7 +212,7 @@ fun GroupedNotificationCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(shapes.card)
+                    .clip(notificationCardShape(shadeTheme))
                     .background(trackBgColor),
                 contentAlignment = alignment,
             ) {
@@ -267,7 +270,7 @@ fun GroupedNotificationCard(
             is ShadeTheme.Pixel -> RoundedCornerShape(26.dp)
             is ShadeTheme.PureMaterial -> RoundedCornerShape(24.dp)
             is ShadeTheme.OneUI -> RoundedCornerShape(24.dp)
-            else -> shapes.card
+            else -> notificationCardShape(shadeTheme)
         }
 
         val dynamicCardShape = if (isSwiping && dragProgress > 0.05f && baseThemeShape is RoundedCornerShape) {
@@ -284,7 +287,7 @@ fun GroupedNotificationCard(
             else -> getCardBorder(alpha = 0.25f)
         }
 
-        val cardBg = when (shadeTheme) {
+        val cardBg = if (isAmoled) Color.Black else LocalShadeColorCustomization.current.notificationBackground ?: when (shadeTheme) {
             is ShadeTheme.Cyberpunk -> Color(0xFF0A0E1A)
             is ShadeTheme.Nothing -> Color(0xFF0D0F12)
             is ShadeTheme.Pixel -> MaterialTheme.colorScheme.surfaceContainerHigh
@@ -307,13 +310,13 @@ fun GroupedNotificationCard(
                 is ShadeTheme.OneUI -> BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.20f))
                 else -> null
             }
-            val ghostLowestBg = when (shadeTheme) {
+            val ghostLowestBg = if (isAmoled) Color.Black else LocalShadeColorCustomization.current.notificationBackground ?: when (shadeTheme) {
                 is ShadeTheme.Cyberpunk -> Color(0xFF060914)
                 is ShadeTheme.Nothing -> Color(0xFF090A0D)
                 is ShadeTheme.OneUI -> MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.70f)
                 else -> MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f)
             }
-            val ghostLowBg = when (shadeTheme) {
+            val ghostLowBg = if (isAmoled) Color.Black else LocalShadeColorCustomization.current.notificationBackground ?: when (shadeTheme) {
                 is ShadeTheme.Cyberpunk -> Color(0xFF080D1C)
                 is ShadeTheme.Nothing -> Color(0xFF0C0E12)
                 is ShadeTheme.OneUI -> MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f)
@@ -356,6 +359,7 @@ fun GroupedNotificationCard(
                 shape = dynamicCardShape,
                 colors = CardDefaults.cardColors(
                     containerColor = cardBg,
+                    contentColor = notificationTextColor ?: MaterialTheme.colorScheme.onSurface,
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = cardElevation),
                 border = cardBorder,
@@ -453,7 +457,7 @@ fun GroupedNotificationCard(
                                             fontWeight = FontWeight.SemiBold,
                                             fontFamily = if (shadeTheme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                                         ),
-                                    color = if (shadeTheme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = notificationTextColor ?: if (shadeTheme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f, fill = false),
@@ -595,7 +599,7 @@ fun GroupedNotificationCard(
                                                 fontWeight = FontWeight.SemiBold,
                                                 fontSize = 13.5.sp,
                                             ),
-                                            color = MaterialTheme.colorScheme.onSurface,
+                                            color = notificationTextColor ?: MaterialTheme.colorScheme.onSurface,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             modifier = Modifier.weight(1f, fill = false),
@@ -604,7 +608,7 @@ fun GroupedNotificationCard(
                                             Text(
                                                 text = "— ${preview.text}",
                                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                                                color = (notificationTextColor ?: MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.85f),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                                 modifier = Modifier.weight(1f),
@@ -619,7 +623,7 @@ fun GroupedNotificationCard(
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 15.sp,
                                         ),
-                                        color = MaterialTheme.colorScheme.onSurface,
+                                        color = notificationTextColor ?: MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
@@ -628,7 +632,7 @@ fun GroupedNotificationCard(
                                         Text(
                                             text = preview.text,
                                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = notificationTextColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 2,
                                             overflow = TextOverflow.Ellipsis,
                                         )
@@ -835,7 +839,7 @@ fun GroupedNotificationCard(
                                                 fontFamily = if (shadeTheme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                                                 fontWeight = FontWeight.Bold,
                                             ),
-                                            color = if (shadeTheme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                            color = notificationTextColor ?: if (shadeTheme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                         )
                                     }

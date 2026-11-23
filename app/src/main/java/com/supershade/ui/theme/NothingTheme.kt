@@ -8,6 +8,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -161,7 +162,7 @@ fun NothingShadeTheme(
     }
 
     // By default Nothing uses iconic glyph red. If user picked custom accent, adapt gracefully
-    val colorScheme = if (accentColor != com.supershade.settings.AccentColor.MONET) {
+    val colorScheme = (if (accentColor != com.supershade.settings.AccentColor.MONET) {
         val c = Color(accentColor.hex)
         base.copy(
             primary = c,
@@ -171,12 +172,14 @@ fun NothingShadeTheme(
         )
     } else {
         monetScheme(base, isDark, if (isAmoled) 0f else 0.35f, monetBlendStrength)
-    }
+    }).withShadeCustomization(LocalShadeColorCustomization.current, isAmoled && isDark)
 
+    CompositionLocalProvider(LocalShadeAmoledMode provides (isAmoled && isDark)) {
     MaterialTheme(
         colorScheme = colorScheme,
         typography  = NothingTypography,
         shapes      = NothingShapes,
         content     = content,
     )
+    }
 }

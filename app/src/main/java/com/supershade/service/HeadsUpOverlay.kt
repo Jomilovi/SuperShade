@@ -122,6 +122,8 @@ import com.supershade.settings.ShadeSettings
 import com.supershade.ui.theme.CyberpunkShadeTheme
 import com.supershade.ui.theme.DarkThemeMode
 import com.supershade.ui.theme.LocalShadeTheme
+import com.supershade.ui.theme.LocalShadeColorCustomization
+import com.supershade.ui.theme.ShadeColorCustomization
 import com.supershade.ui.theme.NothingShadeTheme
 import com.supershade.ui.theme.OneUiShadeTheme
 import com.supershade.ui.theme.PixelShadeTheme
@@ -201,6 +203,9 @@ class HeadsUpOverlay(
                     val activeDarkMode by produceState(DarkThemeMode.SYSTEM) {
                         settings?.darkThemeMode?.collect { value = it }
                     }
+                    val activeShadeColors by produceState(ShadeColorCustomization()) {
+                        settings?.shadeColorCustomization?.collect { value = it }
+                    }
 
                     val isAmoled = activeDarkMode == DarkThemeMode.AMOLED
                     val themeWrapper: @Composable (@Composable () -> Unit) -> Unit = when (activeTheme) {
@@ -232,6 +237,7 @@ class HeadsUpOverlay(
                     val superHaptics = remember { SuperHaptics(context) }
                     CompositionLocalProvider(
                         LocalShadeTheme provides activeTheme,
+                        LocalShadeColorCustomization provides activeShadeColors,
                         LocalSuperHaptics provides superHaptics,
                     ) {
                         themeWrapper {
@@ -306,6 +312,9 @@ class HeadsUpOverlay(
                     val activeDarkMode by produceState(DarkThemeMode.SYSTEM) {
                         settings?.darkThemeMode?.collect { value = it }
                     }
+                    val activeShadeColors by produceState(ShadeColorCustomization()) {
+                        settings?.shadeColorCustomization?.collect { value = it }
+                    }
 
                     val isAmoled = activeDarkMode == DarkThemeMode.AMOLED
                     val themeWrapper: @Composable (@Composable () -> Unit) -> Unit = when (activeTheme) {
@@ -337,6 +346,7 @@ class HeadsUpOverlay(
                     val superHaptics = remember { SuperHaptics(context) }
                     CompositionLocalProvider(
                         LocalShadeTheme provides activeTheme,
+                        LocalShadeColorCustomization provides activeShadeColors,
                         LocalSuperHaptics provides superHaptics,
                     ) {
                         themeWrapper {
@@ -475,7 +485,8 @@ class HeadsUpOverlay(
                 else -> getCardBorder(alpha = 0.35f)
             }
             val cardBg = when {
-                isAmoled -> Color(0xF005070A)
+                isAmoled -> Color.Black
+                LocalShadeColorCustomization.current.notificationBackground != null -> LocalShadeColorCustomization.current.notificationBackground!!
                 theme is ShadeTheme.Cyberpunk -> Color(0xEB060A14)
                 theme is ShadeTheme.Nothing -> Color(0xEB0A0B0E)
                 else -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.84f)
@@ -484,6 +495,7 @@ class HeadsUpOverlay(
                 shape = cardShape,
                 colors = CardDefaults.cardColors(
                     containerColor = cardBg,
+                    contentColor = LocalShadeColorCustomization.current.notificationText ?: MaterialTheme.colorScheme.onSurface,
                 ),
                 border = cardBorder,
                 elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
@@ -605,7 +617,7 @@ class HeadsUpOverlay(
                                 Text(
                                     text = "$appName Settings",
                                     style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = LocalShadeColorCustomization.current.notificationText ?: MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.SemiBold,
                                 )
                             }
@@ -625,7 +637,7 @@ class HeadsUpOverlay(
                             Text(
                                 text = "Channel: ${notification.channelId}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                color = (LocalShadeColorCustomization.current.notificationText ?: MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.7f),
                             )
                         }
 
@@ -696,7 +708,7 @@ class HeadsUpOverlay(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(16.dp),
                             )
-                            Text("Snooze:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Snooze:", style = MaterialTheme.typography.labelSmall, color = LocalShadeColorCustomization.current.notificationText ?: MaterialTheme.colorScheme.onSurfaceVariant)
                             listOf(
                                 "15m" to 15 * 60 * 1000L,
                                 "1h" to 60 * 60 * 1000L,
@@ -755,7 +767,7 @@ class HeadsUpOverlay(
                                         fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                                         letterSpacing = if (theme is ShadeTheme.Nothing) 0.5.sp else 0.sp,
                                     ),
-                                    color = if (theme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = LocalShadeColorCustomization.current.notificationText ?: if (theme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     fontWeight = FontWeight.Medium,
@@ -766,7 +778,7 @@ class HeadsUpOverlay(
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                                 ),
-                                color = if (theme is ShadeTheme.Cyberpunk) Color(0xFFFF007F).copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    color = (LocalShadeColorCustomization.current.notificationText ?: if (theme is ShadeTheme.Cyberpunk) Color(0xFFFF007F) else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.8f),
                             )
                         }
 
@@ -779,7 +791,7 @@ class HeadsUpOverlay(
                                     fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                                     lineHeight = 18.sp,
                                 ),
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = LocalShadeColorCustomization.current.notificationText ?: MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -793,7 +805,7 @@ class HeadsUpOverlay(
                                     lineHeight = 16.sp,
                                     fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                                 ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = LocalShadeColorCustomization.current.notificationText ?: MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
                                 softWrap = true,
@@ -960,9 +972,7 @@ class HeadsUpOverlay(
                 is ShadeTheme.Nothing -> BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
                 else -> getCardBorder(alpha = 0.35f)
             }
-            val cardBg = if (isAmoled) {
-                Color(0xF005070A)
-            } else when (theme) {
+            val cardBg = if (isAmoled) Color.Black else when (theme) {
                 is ShadeTheme.Cyberpunk -> Color(0xF0080C14)
                 is ShadeTheme.Nothing -> Color(0xF00A0C0E)
                 else -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f)
@@ -1073,7 +1083,7 @@ class HeadsUpOverlay(
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 11.sp,
                                         ),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = LocalShadeColorCustomization.current.notificationText ?: MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                                 else -> {}
@@ -1141,7 +1151,7 @@ class HeadsUpOverlay(
                                     fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else null,
                                     letterSpacing = if (theme is ShadeTheme.Nothing) 0.8.sp else 0.sp,
                                 ),
-                                color = if (theme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurface,
+                                color = LocalShadeColorCustomization.current.notificationText ?: if (theme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -1157,7 +1167,7 @@ class HeadsUpOverlay(
                                         fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else null,
                                         letterSpacing = if (theme is ShadeTheme.Nothing) 0.6.sp else 0.sp,
                                     ),
-                                    color = if (theme is ShadeTheme.Cyberpunk) Color(0xFFFF007F) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = LocalShadeColorCustomization.current.notificationText ?: if (theme is ShadeTheme.Cyberpunk) Color(0xFFFF007F) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -1283,7 +1293,7 @@ class HeadsUpOverlay(
                                         .fillMaxWidth()
                                         .height(4.dp)
                                         .clip(ChamferedCornerShape(2.dp))
-                                        .background(Color(0xFF141F30)),
+                                        .background(if (isAmoled) Color.Black else Color(0xFF141F30)),
                                 ) {
                                     Box(
                                         modifier = Modifier

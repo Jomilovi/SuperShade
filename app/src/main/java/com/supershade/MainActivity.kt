@@ -43,6 +43,7 @@ import com.supershade.ui.settings.SettingsScreen
 import com.supershade.ui.theme.BackdropTheme
 import com.supershade.ui.theme.ShadeTheme
 import com.supershade.ui.theme.SuperShadeAppTheme
+import com.supershade.ui.theme.LocalShadeColorCustomization
 import com.supershade.ui.update.UpdateDialog
 import com.supershade.ui.update.WhatsNewSheet
 import com.supershade.viewmodel.ShadeViewModel
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
             val theme by settings.theme.collectAsState(initial = ShadeTheme.OneUI)
             val darkThemeMode by settings.darkThemeMode.collectAsState(initial = com.supershade.ui.theme.DarkThemeMode.SYSTEM)
             val accentColor by settings.accentColor.collectAsState(initial = com.supershade.settings.AccentColor.GALAXY_BLUE)
+            val shadeColors by settings.shadeColorCustomization.collectAsState(initial = com.supershade.ui.theme.ShadeColorCustomization())
             val monetAccentStrength by settings.monetAccentStrength.collectAsState(initial = 1.0f)
             val backdropTheme by settings.backdropTheme.collectAsState(initial = BackdropTheme.FROSTED_GLASS)
             val backdropOpacity by settings.backdropOpacity.collectAsState(initial = 0.78f)
@@ -98,6 +100,7 @@ class MainActivity : ComponentActivity() {
             val showWhatsNew by updateRepo.showWhatsNew.collectAsState()
             val previousVersion by updateRepo.previousVersion.collectAsState()
 
+            CompositionLocalProvider(LocalShadeColorCustomization provides shadeColors) {
             SuperShadeAppTheme(mode = darkThemeMode, accentColor = accentColor) {
                 // Re-checked on every resume and reactively via Shizuku listener so user sees instant feedback
                 val shizukuPermGrantedFlow by connector.hasPermissionFlow.collectAsState()
@@ -107,11 +110,18 @@ class MainActivity : ComponentActivity() {
                 var writeSettingsGranted by remember { mutableStateOf(Settings.System.canWrite(this)) }
                 var accessibilityGranted by remember { mutableStateOf(isAccessibilityServiceEnabled()) }
                 var wifiNetworkNamePermissionGranted by remember { mutableStateOf(hasWifiNetworkNamePermission()) }
+                var bluetoothConnectPermissionGranted by remember { mutableStateOf(hasBluetoothConnectPermission()) }
                 val wifiNetworkNamePermissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission(),
                 ) {
                     wifiNetworkNamePermissionGranted = hasWifiNetworkNamePermission()
                     if (wifiNetworkNamePermissionGranted) shadeViewModel.refreshQuickSettingsTiles()
+                }
+                val bluetoothConnectPermissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission(),
+                ) {
+                    bluetoothConnectPermissionGranted = hasBluetoothConnectPermission()
+                    if (bluetoothConnectPermissionGranted) shadeViewModel.refreshQuickSettingsTiles()
                 }
 
                 DisposableEffect(lifecycleOwner) {
@@ -128,6 +138,9 @@ class MainActivity : ComponentActivity() {
                                 shadeViewModel.refreshQuickSettingsTiles()
                             }
                             wifiNetworkNamePermissionGranted = hasWifiNamePermission
+                            val hasBluetoothPermission = hasBluetoothConnectPermission()
+                            if (hasBluetoothPermission && !bluetoothConnectPermissionGranted) shadeViewModel.refreshQuickSettingsTiles()
+                            bluetoothConnectPermissionGranted = hasBluetoothPermission
                             if (isActive && notifAccessGranted && overlayGranted) {
                                 toggleShadeService(true)
                             }
@@ -177,13 +190,21 @@ class MainActivity : ComponentActivity() {
                         writeSettingsGranted = writeSettingsGranted,
                         accessibilityGranted = accessibilityGranted,
                         wifiNetworkNamePermissionGranted = wifiNetworkNamePermissionGranted,
+                        bluetoothConnectPermissionGranted = bluetoothConnectPermissionGranted,
                         onRequestWifiNetworkNamePermission = {
                             wifiNetworkNamePermissionLauncher.launch(wifiNetworkNamePermission())
+                        },
+                        onRequestBluetoothConnectPermission = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                bluetoothConnectPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                            }
                         },
                         shadeActive = isActive,
                         blockSystemShade = blockSystemShade,
                         selectedTheme = theme,
                         selectedAccentColor = accentColor,
+                        shadeColors = shadeColors,
+                        onShadeColorChange = { target, color -> scope.launch { settings.setShadeColor(target, color) } },
                         backdropTheme = backdropTheme,
                         backdropOpacity = backdropOpacity,
                         notificationDensity = notificationDensity,
@@ -428,6 +449,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             }
+            }
         }
     }
 
@@ -464,6 +486,10 @@ class MainActivity : ComponentActivity() {
 
     private fun hasWifiNetworkNamePermission(): Boolean =
         checkSelfPermission(wifiNetworkNamePermission()) == PackageManager.PERMISSION_GRANTED
+
+    private fun hasBluetoothConnectPermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
 
     private fun toggleShadeService(enable: Boolean) {
         val intent = Intent(this, ShadeService::class.java)

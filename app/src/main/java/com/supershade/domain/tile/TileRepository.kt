@@ -7,6 +7,8 @@ import android.content.res.Configuration
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.location.LocationManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.nfc.NfcAdapter
 import android.os.Handler
@@ -81,6 +83,10 @@ class TileRepository(
                 addAction(WifiManager.WIFI_STATE_CHANGED_ACTION)
                 addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION)
                 addAction(android.bluetooth.BluetoothAdapter.ACTION_STATE_CHANGED)
+                addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED)
+                addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED)
+                addAction(android.bluetooth.BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+                addAction(android.bluetooth.BluetoothProfile.ACTION_CONNECTION_STATE_CHANGED)
                 addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
                 addAction(android.content.Intent.ACTION_AIRPLANE_MODE_CHANGED)
                 addAction(LocationManager.MODE_CHANGED_ACTION)
@@ -143,6 +149,7 @@ class TileRepository(
         _tiles.value = _tiles.value.map { tile ->
             tile.copy(
                 isActive = queryTileActiveState(tile.id),
+                label = queryTileDynamicLabel(tile.id, tile.label),
                 subtitle = queryTileSubtitle(tile.id),
             )
         }
@@ -221,7 +228,7 @@ class TileRepository(
             val isActive = queryTileActiveState(id)
             TileDefinition(
                 id = canonical,
-                label = label,
+                label = queryTileDynamicLabel(canonical, label),
                 isActive = isActive,
                 capability = capability,
                 componentName = componentName,
@@ -254,7 +261,11 @@ class TileRepository(
     fun setTileActive(id: String, active: Boolean) {
         val target = canonicalTileId(id)
         _tiles.value = _tiles.value.map {
-            if (canonicalTileId(it.id) == target) it.copy(isActive = active) else it
+            if (canonicalTileId(it.id) == target) it.copy(
+                isActive = active,
+                label = queryTileDynamicLabel(it.id, it.label),
+                subtitle = queryTileSubtitle(it.id),
+            ) else it
         }
     }
 
@@ -265,25 +276,15 @@ class TileRepository(
                 key.contains("wifi") || key.contains("internet") -> {
                     val appContext = context.applicationContext
                     val wm = appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-                    if (wm?.isWifiEnabled != true) return null
-                    appContext.wifiNetworkNameAccessHint()?.let { return it }
-                    appContext.connectedWifiSsid() ?: "Connected"
+                    if (wm?.isWifiEnabled != true) "Apagado"
+                    else if (appContext.connectedWifiSsid() != null || isWifiConnected()) "Encendido"
+                    else "Encendido · Sin conexión"
                 }
                 key.contains("bt") || key.contains("bluetooth") -> {
                     val bm = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-                    val adapter = bm?.adapter
-                    if (adapter?.isEnabled != true) return null
-                    try {
-                        @Suppress("MissingPermission")
-                        val bonded = adapter.bondedDevices?.filter { dev ->
-                            try {
-                                val isConnectedMethod = dev.javaClass.getMethod("isConnected")
-                                (isConnectedMethod.invoke(dev) as? Boolean) == true
-                            } catch (_: Exception) { false }
-                        }
-                        val name = bonded?.firstOrNull()?.name
-                        if (!name.isNullOrBlank()) name else "On"
-                    } catch (_: Exception) { "On" }
+                    if (bm?.adapter?.isEnabled == true) {
+                        if (queryBluetoothConnectedDeviceName() != null) "Encendido · Conectado" else "Encendido"
+                    } else "Apagado"
                 }
                 key.contains("mute") || key.contains("volume") || key.contains("sound") -> {
                     val am = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
@@ -327,7 +328,7 @@ class TileRepository(
                     val am = context.getSystemService(AlarmManager::class.java)
                     val next = am?.nextAlarmClock
                     if (next != null)
-                        SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(next.triggerTime))
+                        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(next.triggerTime))
                     else null
                 }
                 key.contains("caffeinate") || key.contains("caffeine") -> {
@@ -346,6 +347,37 @@ class TileRepository(
             }
         } catch (_: Exception) { null }
     }
+
+    private fun queryTileDynamicLabel(id: String, fallback: String): String {
+        val key = id.lowercase()
+        return when {
+            key.contains("wifi") || key.contains("internet") -> {
+                if (queryTileActiveState(id)) context.applicationContext.connectedWifiSsid() ?: fallback else fallback
+            }
+            key.contains("bt") || key.contains("bluetooth") -> {
+                if (queryTileActiveState(id)) queryBluetoothConnectedDeviceName() ?: fallback else fallback
+            }
+            else -> fallback
+        }
+    }
+
+    private fun isWifiConnected(): Boolean = try {
+        val connectivity = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val activeNetwork = connectivity.activeNetwork ?: return false
+        connectivity.getNetworkCapabilities(activeNetwork)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+    } catch (_: Exception) { false }
+
+    private fun queryBluetoothConnectedDeviceName(): String? = try {
+        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val adapter = manager?.adapter?.takeIf { it.isEnabled } ?: return null
+        @Suppress("MissingPermission")
+        adapter.bondedDevices?.firstNotNullOfOrNull { device ->
+            val connected = try {
+                device.javaClass.getMethod("isConnected").invoke(device) as? Boolean == true
+            } catch (_: Exception) { false }
+            device.name?.takeIf { connected && it.isNotBlank() }
+        }
+    } catch (_: Exception) { null }
 
     private fun queryTileActiveState(id: String): Boolean {
         val key = id.lowercase()

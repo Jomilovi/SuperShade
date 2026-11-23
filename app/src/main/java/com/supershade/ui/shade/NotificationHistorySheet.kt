@@ -84,8 +84,10 @@ import com.supershade.domain.notification.model.ShadeCategory
 import com.supershade.haptics.LocalSuperHaptics
 import com.supershade.haptics.SuperHaptics
 import com.supershade.ui.theme.ChamferedCornerShape
-import com.supershade.ui.theme.LocalShadeShapeScheme
 import com.supershade.ui.theme.LocalShadeTheme
+import com.supershade.ui.theme.LocalShadeColorCustomization
+import com.supershade.ui.theme.LocalShadeAmoledMode
+import com.supershade.ui.theme.notificationCardShape
 import com.supershade.ui.theme.ShadeTheme
 import com.supershade.ui.theme.getCardBorder
 import kotlinx.coroutines.Dispatchers
@@ -103,7 +105,6 @@ fun NotificationHistorySheet(
 ) {
     val context = LocalContext.current
     val haptics = LocalSuperHaptics.current ?: remember(context) { SuperHaptics(context) }
-    val shapes = LocalShadeShapeScheme.current
     val theme = LocalShadeTheme.current
 
     val sheetShape = when (theme) {
@@ -758,7 +759,8 @@ private fun DismissedNotificationCard(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val shapes = LocalShadeShapeScheme.current
+    val notificationTextColor = LocalShadeColorCustomization.current.notificationText
+    val isAmoled = LocalShadeAmoledMode.current
 
     val appName = remember(record.packageName) {
         try {
@@ -796,19 +798,14 @@ private fun DismissedNotificationCard(
         }
     }
 
-    val cardShape = when (theme) {
-        is ShadeTheme.Cyberpunk -> ChamferedCornerShape(8.dp)
-        is ShadeTheme.Nothing -> RoundedCornerShape(10.dp)
-        is ShadeTheme.OneUI -> RoundedCornerShape(18.dp)
-        else -> shapes.card
-    }
+    val cardShape = notificationCardShape(theme)
     val cardBorder = when (theme) {
         is ShadeTheme.Cyberpunk -> BorderStroke(1.dp, Color(0xFF00F0FF).copy(alpha = 0.30f))
         is ShadeTheme.Nothing -> BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
         is ShadeTheme.OneUI -> BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
         else -> getCardBorder(alpha = 0.22f)
     }
-    val cardBg = when (theme) {
+    val cardBg = if (isAmoled) Color.Black else LocalShadeColorCustomization.current.notificationBackground ?: when (theme) {
         is ShadeTheme.Cyberpunk -> Color(0xFF060914)
         is ShadeTheme.Nothing -> Color(0xFF090A0D)
         else -> MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.45f)
@@ -816,7 +813,10 @@ private fun DismissedNotificationCard(
 
     Card(
         shape = cardShape,
-        colors = CardDefaults.cardColors(containerColor = cardBg),
+        colors = CardDefaults.cardColors(
+            containerColor = cardBg,
+            contentColor = notificationTextColor ?: MaterialTheme.colorScheme.onSurface,
+        ),
         border = cardBorder,
         modifier = modifier
             .fillMaxWidth()
@@ -839,7 +839,7 @@ private fun DismissedNotificationCard(
                 is ShadeTheme.Nothing -> BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
                 else -> null
             }
-            val iconBoxBg = when (theme) {
+            val iconBoxBg = if (isAmoled) Color.Black else when (theme) {
                 is ShadeTheme.Cyberpunk -> Color(0xFF04060E)
                 is ShadeTheme.Nothing -> Color(0xFF14161B)
                 else -> Color.Transparent
@@ -888,7 +888,7 @@ private fun DismissedNotificationCard(
                             fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                             letterSpacing = if (theme is ShadeTheme.Nothing) 0.5.sp else 0.sp,
                         ),
-                        color = if (theme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = notificationTextColor ?: if (theme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
@@ -899,7 +899,7 @@ private fun DismissedNotificationCard(
                             fontSize = 10.5.sp,
                             fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                         ),
-                        color = if (theme is ShadeTheme.Cyberpunk) Color(0xFFFF007F).copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                        color = (notificationTextColor ?: if (theme is ShadeTheme.Cyberpunk) Color(0xFFFF007F) else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.65f),
                     )
                 }
 
@@ -911,7 +911,7 @@ private fun DismissedNotificationCard(
                         fontWeight = FontWeight.SemiBold,
                         fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                     ),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = notificationTextColor ?: MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -923,7 +923,7 @@ private fun DismissedNotificationCard(
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                         ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = notificationTextColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -942,7 +942,8 @@ fun SnoozedNotificationCard(
 ) {
     val context = LocalContext.current
     val haptics = LocalSuperHaptics.current ?: remember(context) { SuperHaptics(context) }
-    val shapes = LocalShadeShapeScheme.current
+    val notificationTextColor = LocalShadeColorCustomization.current.notificationText
+    val isAmoled = LocalShadeAmoledMode.current
 
     val appName = remember(record.packageName) {
         try {
@@ -973,19 +974,14 @@ fun SnoozedNotificationCard(
         }
     }
 
-    val cardShape = when (theme) {
-        is ShadeTheme.Cyberpunk -> ChamferedCornerShape(8.dp)
-        is ShadeTheme.Nothing -> RoundedCornerShape(10.dp)
-        is ShadeTheme.OneUI -> RoundedCornerShape(18.dp)
-        else -> shapes.card
-    }
+    val cardShape = notificationCardShape(theme)
     val cardBorder = when (theme) {
         is ShadeTheme.Cyberpunk -> BorderStroke(1.dp, Color(0xFF00F0FF).copy(alpha = 0.30f))
         is ShadeTheme.Nothing -> BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
         is ShadeTheme.OneUI -> BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
         else -> getCardBorder(alpha = 0.22f)
     }
-    val cardBg = when (theme) {
+    val cardBg = if (isAmoled) Color.Black else LocalShadeColorCustomization.current.notificationBackground ?: when (theme) {
         is ShadeTheme.Cyberpunk -> Color(0xFF060914)
         is ShadeTheme.Nothing -> Color(0xFF090A0D)
         else -> MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.45f)
@@ -993,7 +989,10 @@ fun SnoozedNotificationCard(
 
     Card(
         shape = cardShape,
-        colors = CardDefaults.cardColors(containerColor = cardBg),
+        colors = CardDefaults.cardColors(
+            containerColor = cardBg,
+            contentColor = notificationTextColor ?: MaterialTheme.colorScheme.onSurface,
+        ),
         border = cardBorder,
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -1050,7 +1049,7 @@ fun SnoozedNotificationCard(
                             fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                             letterSpacing = if (theme is ShadeTheme.Nothing) 0.5.sp else 0.sp,
                         ),
-                        color = if (theme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = notificationTextColor ?: if (theme is ShadeTheme.Cyberpunk) Color(0xFF00F0FF) else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
@@ -1079,7 +1078,7 @@ fun SnoozedNotificationCard(
                         fontWeight = FontWeight.SemiBold,
                         fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                     ),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = notificationTextColor ?: MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1091,7 +1090,7 @@ fun SnoozedNotificationCard(
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = if (theme is ShadeTheme.Cyberpunk) FontFamily.Monospace else FontFamily.Default,
                         ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = notificationTextColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
